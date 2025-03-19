@@ -13,10 +13,28 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-type Handler struct{}
+type Handler struct {
+	oauthConfig *oauth2.Config
+}
 
 func NewHandler() *Handler {
-	return &Handler{}
+	return &Handler{
+		oauthConfig: &oauth2.Config{
+			ClientID:     config.GetGoogleClientID(),
+			ClientSecret: config.GetGoogleClientSecret(),
+			RedirectURL:  config.GetGoogleRedirectURL(),
+			Scopes: []string{
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			},
+			Endpoint: google.Endpoint,
+		},
+	}
+}
+
+func InitGoogleOAuth() {
+	// Initialize the OAuth config
+	_ = NewHandler()
 }
 
 // GenerateRandomState generates a random state string for OAuth
@@ -27,16 +45,7 @@ func GenerateRandomState() string {
 }
 
 func (h *Handler) getOAuthConfig() *oauth2.Config {
-	return &oauth2.Config{
-		ClientID:     config.GetGoogleClientID(),
-		ClientSecret: config.GetGoogleClientSecret(),
-		RedirectURL:  config.GetGoogleRedirectURL(),
-		Scopes: []string{
-			"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/userinfo.profile",
-		},
-		Endpoint: google.Endpoint,
-	}
+	return h.oauthConfig
 }
 
 func (h *Handler) Login(c *gin.Context) {

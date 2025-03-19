@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Go Wiki</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <title>Login - Daniel's Wiki</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/pages/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="login-page">
@@ -12,7 +13,7 @@
         <div class="login-box">
             <div class="login-header">
                 <i class="fas fa-book-reader"></i>
-                <h1>Welcome to Go Wiki</h1>
+                <h1>Welcome to Daniel's Wiki</h1>
                 <p>Your personal knowledge base</p>
             </div>
             <div class="login-content">
@@ -33,9 +34,9 @@
             </div>
         </div>
     </div>
-    <button class="theme-toggle" id="theme-toggle">
-        <i class="fas fa-moon fa-lg"></i>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
     </button>
-    <script src="/static/js/script.js"></script>
+    <script src="/static/js/theme.js"></script>
 </body>
 </html> 

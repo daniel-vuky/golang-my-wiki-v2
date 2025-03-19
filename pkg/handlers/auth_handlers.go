@@ -22,17 +22,10 @@ func LoginHandler(c *gin.Context) {
 }
 
 func GoogleLoginHandler(c *gin.Context) {
-	session := sessions.Default(c)
-	state := auth.GenerateRandomState()
-	session.Set("oauth_state", state)
-	session.Save()
-
-	url := auth.GetGoogleOAuthConfig().AuthCodeURL(state)
-	c.Redirect(http.StatusTemporaryRedirect, url)
+	auth.NewHandler().Login(c)
 }
 
 func GoogleCallbackHandler(c *gin.Context) {
-	// Use the auth package's Callback function which includes email validation
 	auth.NewHandler().Callback(c)
 }
 
