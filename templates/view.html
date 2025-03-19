@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Daniel's Wiki</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/components/sidebar.css">
+    <link rel="stylesheet" href="/static/css/pages/view.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="logged-in">
+    <div class="wiki-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="wiki-title">Daniel's Wiki</a>
+            </div>
+            <div class="user-info">
+                <span>Welcome, {{ .User.Name }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    {{range .SideMenu}}
+                    <li {{if .Active}}class="active"{{end}}>
+                        <a href="{{.URL}}">{{.Title}}</a>
+                    </li>
+                    {{end}}
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <p>&copy; 2024 Daniel's Wiki</p>
+            </div>
+        </aside>
+        <main class="content">
+            <header class="content-header">
+                <h2>{{.Title}}</h2>
+                <div class="content-actions">
+                    <a href="/edit/{{.Title}}" class="button">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </header>
+            <div class="content-body">
+                {{.Content}}
+            </div>
+        </main>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+    <script src="/static/js/theme.js"></script>
+</body>
+</html> 

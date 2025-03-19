@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Daniel's Wiki</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/pages/login.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <i class="fas fa-book-reader"></i>
+                <h1>Welcome to Daniel's Wiki</h1>
+                <p>Your personal knowledge base</p>
+            </div>
+            <div class="login-content">
+                {{if .Error}}
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{.Error}}
+                </div>
+                {{end}}
+                <p class="login-description">Please sign in with your Google account to continue</p>
+                <a href="/auth/google" class="google-btn">
+                    <i class="fab fa-google"></i>
+                    Sign in with Google
+                </a>
+            </div>
+            <div class="login-footer">
+                <p>Secure • Fast • Simple</p>
+            </div>
+        </div>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+    <script src="/static/js/theme.js"></script>
+</body>
+</html> 

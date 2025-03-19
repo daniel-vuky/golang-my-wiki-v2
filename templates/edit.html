@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}} - Daniel's Wiki</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/components/sidebar.css">
+    <link rel="stylesheet" href="/static/css/components/tinymce.css">
+    <link rel="stylesheet" href="/static/css/pages/edit.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="/static/js/tinymce/tinymce.min.js"></script>
+</head>
+<body class="logged-in">
+    <div class="wiki-container">
+        {{template "sidebar" .}}
+        <main class="content">
+            <header class="content-header">
+                <h2>{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}}</h2>
+                <div class="content-actions">
+                    {{if not .IsNewPage}}
+                    <a href="/view/{{.Title}}" class="back-btn">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    {{end}}
+                </div>
+            </header>
+            <div class="content-body">
+                <form action="{{if .IsNewPage}}/save/new{{else}}/save/{{.Title}}{{end}}" method="POST">
+                    <div class="form-group">
+                        <label for="title">Page Title</label>
+                        <input type="text" id="title" name="title" required placeholder="Enter page title" class="form-control" value="{{if not .IsNewPage}}{{.Title}}{{end}}">
+                    </div>
+                    <div class="form-group">
+                        <textarea id="editor" name="body">{{.Body}}</textarea>
+                    </div>
+                    <div class="editor-actions">
+                        {{if not .IsNewPage}}
+                        <button type="button" class="button secondary" onclick="confirmDelete()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                        {{end}}
+                        <button type="submit" class="button primary">
+                            <i class="fas fa-save"></i> {{if .IsNewPage}}Create Page{{else}}Save Changes{{end}}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/tinymce-config.js"></script>
+    <script>
+        function confirmDelete() {
+            if (confirm('Are you sure you want to delete this page? This action cannot be undone.')) {
+                window.location.href = '/delete/{{.Title}}';
+            }
+        }
+    </script>
+</body>
+</html> 

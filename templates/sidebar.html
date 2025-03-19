@@ -1,0 +1,23 @@
+{{define "sidebar"}}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <a href="/" class="wiki-title">Daniel's Wiki</a>
+    </div>
+    <div class="user-info">
+        <span>Welcome, {{ .User.Name }}</span>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+    <nav class="sidebar-nav">
+        <ul>
+            {{range .SideMenu}}
+            <li {{if .Active}}class="active"{{end}}>
+                <a href="{{.URL}}">{{.Title}}</a>
+            </li>
+            {{end}}
+        </ul>
+    </nav>
+    <div class="sidebar-footer">
+        <p>&copy; 2024 Daniel's Wiki</p>
+    </div>
+</aside>
+{{end}} 

@@ -1,0 +1,106 @@
+/* TinyMCE Editor Styles - Fixed Light Theme */
+.tox-tinymce {
+    border-radius: 8px !important;
+    border: 1px solid #ccc !important;
+    background-color: #fff !important;
+}
+
+.tox .tox-toolbar__group {
+    border-color: #ccc !important;
+}
+
+.tox .tox-toolbar {
+    background-color: #fff !important;
+}
+
+.tox .tox-tbtn {
+    color: #222f3e !important;
+}
+
+.tox .tox-tbtn:hover {
+    background-color: #e9ecef !important;
+}
+
+.tox .tox-tbtn--enabled {
+    background-color: #e9ecef !important;
+}
+
+.tox .tox-tbtn svg {
+    fill: #222f3e !important;
+}
+
+.tox .tox-statusbar {
+    border-color: #ccc !important;
+    background-color: #fff !important;
+    color: #222f3e !important;
+}
+
+/* Menu items */
+.tox .tox-collection__item-label {
+    color: #222f3e !important;
+}
+
+.tox .tox-collection__item {
+    color: #222f3e !important;
+}
+
+.tox .tox-menu {
+    background-color: #fff !important;
+    border: 1px solid #ccc !important;
+}
+
+/* Editor content area */
+.tox-tinymce iframe {
+    background-color: #fff !important;
+}
+
+/* Content styling */
+.mce-content-body {
+    color: #222f3e !important;
+    background-color: #fff !important;
+}
+
+/* Dropdown and dialog improvements */
+.tox .tox-dialog-wrap__backdrop {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+.tox .tox-dialog {
+    background-color: #fff !important;
+    border: 1px solid #ccc !important;
+    color: #222f3e !important;
+}
+
+.tox .tox-dialog__header {
+    background-color: #fff !important;
+    border-color: #ccc !important;
+    color: #222f3e !important;
+}
+
+.tox .tox-dialog__footer {
+    background-color: #fff !important;
+    border-color: #ccc !important;
+}
+
+/* Dialog buttons */
+.tox .tox-button {
+    background-color: #0066cc !important;
+    border-color: #0066cc !important;
+    color: white !important;
+}
+
+.tox .tox-button--secondary {
+    background-color: #f8f9fa !important;
+    border: 1px solid #ccc !important;
+    color: #222f3e !important;
+}
+
+.tox .tox-button--secondary:hover {
+    background-color: #e9ecef !important;
+}
+
+/* Collection items hover state */
+.tox .tox-collection__item:hover {
+    background-color: #0066cc !important;
+    color: white !important;
+} 
