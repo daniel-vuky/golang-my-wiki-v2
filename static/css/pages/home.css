@@ -12,6 +12,15 @@
     box-shadow: var(--card-shadow);
     margin-bottom: 2rem;
     width: 100%;
+    max-width: 100%;
+}
+
+/* Content area - centered */
+.content-body {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
 }
 
 .user-info {
@@ -65,9 +74,28 @@
     transform: translateY(-1px);
 }
 
+.add-category-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #28a745;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.add-category-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
 /* Wiki List */
 .wiki-list {
-    max-width: 1200px;
+    max-width: 100%;
+    width: 100%;
     margin: 0 auto;
     background: var(--bg-primary);
     border-radius: 8px;
@@ -179,6 +207,28 @@ body.dark-theme .wiki-list-item .delete-link {
     color: #ffffff;
 }
 
+/* Empty wiki message */
+.empty-wiki-message {
+    padding: 3rem 2rem;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.empty-wiki-message p {
+    color: #6c757d;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+body.dark-theme .empty-wiki-message {
+    background-color: #2a2d31;
+}
+
+body.dark-theme .empty-wiki-message p {
+    color: #9aa0a6;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
     .home-container {
@@ -195,4 +245,239 @@ body.dark-theme .wiki-list-item .delete-link {
         width: 100%;
         justify-content: center;
     }
+    
+    .categories-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 1rem;
+    }
+    
+    .category-box {
+        padding: 1rem 0.75rem;
+    }
+    
+    .category-icon {
+        font-size: 2rem;
+    }
+    
+    .category-name {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .section-title h3 {
+        font-size: 1.2rem;
+    }
+}
+
+/* Category Popup */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.popup-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.popup-content {
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.popup-overlay.active .popup-content {
+    transform: translateY(0);
+}
+
+.popup-content h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.popup-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.popup-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.popup-form input[type="text"] {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.popup-form input[type="text"]:focus {
+    border-color: var(--accent-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+.popup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.btn-cancel, .btn-save {
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-cancel {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.btn-cancel:hover {
+    background-color: #e2e6ea;
+}
+
+.btn-save {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-save:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+/* Dark theme support for popup */
+body.dark-theme .popup-content {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+}
+
+body.dark-theme .popup-form input[type="text"] {
+    background-color: #2a2d31;
+    border-color: #3a3f44;
+    color: #e9ecef;
+}
+
+body.dark-theme .btn-cancel {
+    background-color: #3a3f44;
+    color: #e9ecef;
+}
+
+body.dark-theme .btn-cancel:hover {
+    background-color: #4a4f54;
+}
+
+/* Section Title */
+.section-title {
+    margin: 0.5rem 0 1rem;
+    width: 100%;
+}
+
+.section-title h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Categories Grid */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.category-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+    box-shadow: var(--card-shadow);
+}
+
+.category-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-color);
+}
+
+.category-icon {
+    font-size: 2.5rem;
+    color: #f8d775;
+    margin-bottom: 0.75rem;
+}
+
+.category-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: center;
+    word-break: break-word;
+}
+
+/* Dark theme support for categories */
+body.dark-theme .category-box {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .category-icon {
+    color: #f8d775; /* Keep the folder yellow in dark mode */
+}
+
+body.dark-theme .category-name {
+    color: var(--text-primary);
+}
+
+/* Content Area */
+.content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0 0 2rem 0;
 } 

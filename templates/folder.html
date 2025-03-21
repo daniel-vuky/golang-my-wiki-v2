@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.FolderName}} - Daniel's Wiki</title>
+    <!-- Base styles -->
+    <link rel="stylesheet" href="/static/css/base.css">
+    <!-- Component styles -->
+    <link rel="stylesheet" href="/static/css/components/sidebar.css">
+    <!-- Page specific styles -->
+    <link rel="stylesheet" href="/static/css/pages/folder.css">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="logged-in">
+    <div class="wiki-container">
+        <!-- Sidebar with folder tree -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="wiki-title">Daniel's Wiki</a>
+            </div>
+            <div class="user-info">
+                <span>Welcome, {{ .User.Name }}</span>
+                <a href="/logout" class="logout-btn">Logout</a>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="folder-tree">
+                    <li class="tree-item">
+                        <a href="/" class="tree-link {{if eq .CurrentPath "/"}}active{{end}}">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    {{range .FolderTree}}
+                    <li class="tree-item {{if .HasChildren}}has-children{{end}} {{if .IsExpanded}}expanded{{end}}">
+                        {{if .HasChildren}}
+                        <span class="expand-icon"><i class="fas fa-caret-right"></i></span>
+                        {{end}}
+                        <a href="/category/{{.Path}}" class="tree-link {{if eq $.CurrentPath .Path}}active{{end}}">
+                            <i class="fas fa-folder{{if eq $.CurrentPath .Path}}-open{{end}}"></i> {{.Name}}
+                        </a>
+                        {{if and .HasChildren .IsExpanded}}
+                        <ul class="subtree">
+                            {{range .Children}}
+                            <li class="tree-item {{if .HasChildren}}has-children{{end}} {{if .IsExpanded}}expanded{{end}}">
+                                {{if .HasChildren}}
+                                <span class="expand-icon"><i class="fas fa-caret-right"></i></span>
+                                {{end}}
+                                <a href="/category/{{.Path}}" class="tree-link {{if eq $.CurrentPath .Path}}active{{end}}">
+                                    <i class="fas fa-folder{{if eq $.CurrentPath .Path}}-open{{end}}"></i> {{.Name}}
+                                </a>
+                                {{if and .HasChildren .IsExpanded}}
+                                <ul class="subtree">
+                                    {{range .Children}}
+                                    <li class="tree-item">
+                                        <a href="/category/{{.Path}}" class="tree-link {{if eq $.CurrentPath .Path}}active{{end}}">
+                                            <i class="fas fa-folder{{if eq $.CurrentPath .Path}}-open{{end}}"></i> {{.Name}}
+                                        </a>
+                                    </li>
+                                    {{end}}
+                                </ul>
+                                {{end}}
+                            </li>
+                            {{end}}
+                        </ul>
+                        {{end}}
+                    </li>
+                    {{end}}
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <p>&copy; 2024 Daniel's Wiki</p>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="content-header">
+                <h2>
+                    <i class="fas fa-folder-open"></i> {{.FolderName}}
+                </h2>
+                <div class="content-actions">
+                    <button id="btn-subcategory" class="button primary">
+                        <i class="fas fa-folder-plus"></i> Create Sub Category
+                    </button>
+                    <a href="/new?folder={{.FolderPath}}" class="button secondary">
+                        <i class="fas fa-file-plus"></i> Create Note
+                    </a>
+                </div>
+            </header>
+            
+            <div class="content-body">
+                <div class="folders-section">
+                    <div class="section-title">
+                        <h3>Sub Categories</h3>
+                    </div>
+                    
+                    {{if .SubFolders}}
+                    <div class="categories-grid">
+                        {{range .SubFolders}}
+                        <a href="/category/{{.Path}}" class="category-box">
+                            <div class="category-icon">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="category-name">{{.Name}}</div>
+                        </a>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="empty-section">
+                        <p>No subcategories found</p>
+                    </div>
+                    {{end}}
+                </div>
+                
+                <div class="notes-section">
+                    <div class="section-title">
+                        <h3>Notes</h3>
+                    </div>
+                    
+                    {{if .Notes}}
+                    <div class="notes-list">
+                        {{range $index, $note := .Notes}}
+                        <div class="note-item">
+                            <a href="/view/{{$note.Title}}" class="note-link">
+                                <div class="note-icon">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div class="note-details">
+                                    <h4 class="note-title">{{$note.Title}}</h4>
+                                    <p class="note-preview">{{$note.Preview}}</p>
+                                </div>
+                            </a>
+                            <div class="note-actions">
+                                <a href="/edit/{{$note.Title}}" class="action-btn edit-btn">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="#" onclick="confirmDelete('{{$note.Title}}')" class="action-btn delete-btn">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="empty-section">
+                        <p>No notes found in this category</p>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Subcategory Popup -->
+    <div id="subcategory-popup" class="popup-overlay">
+        <div class="popup-content">
+            <h3>Create New Subcategory</h3>
+            <div class="popup-form">
+                <div class="form-group">
+                    <label for="subcategory-name">Subcategory Name</label>
+                    <input type="text" id="subcategory-name" placeholder="Enter subcategory name">
+                </div>
+                <div class="popup-actions">
+                    <button id="cancel-subcategory" class="btn-cancel">Cancel</button>
+                    <button id="save-subcategory" class="btn-save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+    
+    <script src="/static/js/theme.js"></script>
+    <script>
+        // Folder tree expand/collapse functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            setupTreeExpandCollapse();
+            
+            // Subcategory popup functionality
+            const subcategoryBtn = document.getElementById('btn-subcategory');
+            const subcategoryPopup = document.getElementById('subcategory-popup');
+            const cancelBtn = document.getElementById('cancel-subcategory');
+            const saveBtn = document.getElementById('save-subcategory');
+            const subcategoryInput = document.getElementById('subcategory-name');
+            
+            subcategoryBtn.addEventListener('click', function() {
+                subcategoryPopup.classList.add('active');
+                subcategoryInput.focus();
+            });
+            
+            cancelBtn.addEventListener('click', function() {
+                subcategoryPopup.classList.remove('active');
+                subcategoryInput.value = '';
+            });
+            
+            subcategoryPopup.addEventListener('click', function(e) {
+                if (e.target === subcategoryPopup) {
+                    subcategoryPopup.classList.remove('active');
+                    subcategoryInput.value = '';
+                }
+            });
+            
+            saveBtn.addEventListener('click', function() {
+                const subcategoryName = subcategoryInput.value.trim();
+                
+                if (!subcategoryName) {
+                    alert('Please enter a subcategory name');
+                    return;
+                }
+                
+                // Create the request body
+                const requestBody = JSON.stringify({ 
+                    name: subcategoryName,
+                    parent: "{{.FolderPath}}" 
+                });
+                console.log('Sending request with body:', requestBody);
+                
+                // Show loading indicator
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = 'Creating...';
+                
+                // Send request to create subcategory
+                fetch('/category/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    
+                    return response.text().then(text => {
+                        console.log('Response text:', text);
+                        
+                        try {
+                            if (text && text.trim()) {
+                                return JSON.parse(text);
+                            }
+                            return { success: response.ok };
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                            return { 
+                                success: false, 
+                                error: 'Invalid server response: ' + text
+                            };
+                        }
+                    });
+                })
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        throw new Error(data.error || 'Failed to create subcategory');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error creating subcategory: ' + error.message);
+                })
+                .finally(() => {
+                    // Reset button state
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = 'Save';
+                });
+            });
+        });
+        
+        function setupTreeExpandCollapse() {
+            // Get all expand icons, including those that might be added dynamically
+            document.querySelectorAll('.expand-icon').forEach(icon => {
+                // Remove any existing event listeners to avoid duplicates
+                icon.removeEventListener('click', handleExpandCollapse);
+                // Add event listener
+                icon.addEventListener('click', handleExpandCollapse);
+            });
+        }
+        
+        function handleExpandCollapse(event) {
+            const treeItem = this.closest('.tree-item');
+            treeItem.classList.toggle('expanded');
+            
+            // Setup event listeners for any newly visible expand icons
+            if (treeItem.classList.contains('expanded')) {
+                const nestedIcons = treeItem.querySelectorAll('.subtree .expand-icon');
+                nestedIcons.forEach(icon => {
+                    icon.removeEventListener('click', handleExpandCollapse);
+                    icon.addEventListener('click', handleExpandCollapse);
+                });
+            }
+            
+            // Stop event propagation to prevent parent handlers from firing
+            event.stopPropagation();
+        }
+
+        function confirmDelete(title) {
+            if (confirm(`Are you sure you want to delete "${title}"?`)) {
+                window.location.href = `/delete/${title}`;
+            }
+        }
+        
+        function toggleTheme() {
+            const body = document.body;
+            body.classList.toggle('dark-theme');
+            
+            // Save preference to localStorage
+            if (body.classList.contains('dark-theme')) {
+                localStorage.setItem('theme', 'dark');
+                document.querySelector('.theme-toggle i').className = 'fas fa-sun';
+            } else {
+                localStorage.setItem('theme', 'light');
+                document.querySelector('.theme-toggle i').className = 'fas fa-moon';
+            }
+        }
+        
+        // Check for saved theme preference
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.querySelector('.theme-toggle i').className = 'fas fa-sun';
+            }
+        });
+    </script>
+</body>
+</html> 

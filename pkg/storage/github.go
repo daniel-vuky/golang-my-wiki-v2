@@ -377,21 +377,34 @@ func (g *GitHubStorage) ListFolders() ([]string, error) {
 
 // CreateFolder creates a new folder in GitHub
 func (g *GitHubStorage) CreateFolder(path string) error {
+	log.Printf("=== CreateFolder START: %s ===", path)
 	ctx := context.Background()
 
-	// Create an empty .folder file to mark the directory
+	// Create a .folder file to mark the directory
 	folderPath := path + "/.folder"
+
+	// GitHub requires content to be non-empty and properly encoded
+	// This is a small text file with a message explaining its purpose
+	content := []byte("This file marks the folder for the wiki system. Please do not delete.")
+
 	opts := &github.RepositoryContentFileOptions{
 		Message: github.String(fmt.Sprintf("Create folder: %s", path)),
-		Content: []byte(""), // Empty file to mark directory
+		Content: content,
 		Branch:  &g.branch,
 	}
 
-	_, _, err := g.client.Repositories.CreateFile(ctx, g.owner, g.repository, folderPath, opts)
+	log.Printf("Creating folder marker file at: %s", folderPath)
+	_, resp, err := g.client.Repositories.CreateFile(ctx, g.owner, g.repository, folderPath, opts)
 	if err != nil {
+		log.Printf("Error creating folder: %v", err)
+		if resp != nil {
+			log.Printf("GitHub API response status: %s", resp.Status)
+		}
 		return fmt.Errorf("failed to create folder: %v", err)
 	}
 
+	log.Printf("Successfully created folder: %s", path)
+	log.Printf("=== CreateFolder END ===")
 	return nil
 }
 
@@ -413,4 +426,45 @@ func (g *GitHubStorage) DeleteFolder(path string) error {
 	}
 
 	return nil
+}
+
+// GetPagesInFolder retrieves all pages from a specific folder
+func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
+	log.Printf("=== GetPagesInFolder START: %s ===", folderPath)
+	ctx := context.Background()
+
+	opts := &github.RepositoryContentGetOptions{
+		Ref: g.branch,
+	}
+
+	_, contents, _, err := g.client.Repositories.GetContents(ctx, g.owner, g.repository, folderPath, opts)
+	if err != nil {
+		log.Printf("Error getting folder contents: %v", err)
+		return nil, fmt.Errorf("failed to get folder contents: %v", err)
+	}
+
+	var pages []types.Page
+	for _, content := range contents {
+		if content.GetType() == "file" && strings.HasSuffix(content.GetName(), ".txt") {
+			page, err := g.GetPage(folderPath + "/" + content.GetName())
+			if err != nil {
+				log.Printf("Warning: Failed to read page %s: %v", content.GetPath(), err)
+				continue // Skip files that can't be read
+			}
+
+			// Add a small preview
+			contentStr := page.Content
+			if len(contentStr) > 150 {
+				page.Preview = contentStr[:150] + "..."
+			} else {
+				page.Preview = contentStr
+			}
+
+			pages = append(pages, *page)
+		}
+	}
+
+	log.Printf("Found %d pages in folder %s", len(pages), folderPath)
+	log.Printf("=== GetPagesInFolder END: %s ===", folderPath)
+	return pages, nil
 }

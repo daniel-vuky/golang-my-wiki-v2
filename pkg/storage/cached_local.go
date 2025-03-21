@@ -216,3 +216,31 @@ func (cl *CachedLocalStorage) DeleteFolder(path string) error {
 
 	return nil
 }
+
+// GetPagesInFolder retrieves all pages from a specific folder, using cache when available
+func (cl *CachedLocalStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
+	// Try to get from cache first
+	pages, found, err := cl.cache.GetFolderPages(folderPath)
+	if err != nil {
+		log.Printf("Cache error when getting pages in folder %s: %v", folderPath, err)
+	}
+
+	if found {
+		log.Printf("Using cached pages for folder %s: %d pages", folderPath, len(pages))
+		return pages, nil
+	}
+
+	// Cache miss, get from local storage
+	log.Printf("Cache miss for folder %s pages, fetching from local storage", folderPath)
+	pages, err = cl.local.GetPagesInFolder(folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache for next time
+	if err := cl.cache.SetFolderPages(folderPath, pages); err != nil {
+		log.Printf("Failed to cache pages for folder %s: %v", folderPath, err)
+	}
+
+	return pages, nil
+}

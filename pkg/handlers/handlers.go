@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/models"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage/types"
@@ -21,27 +22,28 @@ func InitHandlers(s types.Storage) {
 func HomeHandler(c *gin.Context) {
 	log.Println("=== HomeHandler START ===")
 
-	pages, err := models.GetAllPages(store)
+	// Get all categories (folders)
+	categories, err := store.ListFolders()
 	if err != nil {
-		log.Printf("Error getting pages: %v", err)
+		log.Printf("Error getting categories: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": fmt.Sprintf("Failed to get pages: %v", err),
+			"error": fmt.Sprintf("Failed to get categories: %v", err),
 		})
 		return
 	}
 
-	log.Printf("Found %d pages", len(pages))
-	for _, page := range pages {
-		log.Printf("Page: %s", page.Title)
+	log.Printf("Found %d categories", len(categories))
+	for _, category := range categories {
+		log.Printf("Category: %s", category)
 	}
 
 	user := c.MustGet("user")
 	log.Printf("User: %+v", user)
 
 	c.HTML(http.StatusOK, "home.html", gin.H{
-		"Pages":    pages,
-		"User":     user,
-		"SideMenu": models.GetMenuItems("", store),
+		"Categories": categories,
+		"User":       user,
+		"SideMenu":   models.GetMenuItems("", store),
 	})
 
 	log.Println("=== HomeHandler END ===")
@@ -224,4 +226,211 @@ func DeleteHandler(c *gin.Context) {
 	log.Printf("Successfully deleted page: %s", title)
 	log.Printf("=== DeleteHandler END: %s ===", title)
 	c.Redirect(http.StatusFound, "/")
+}
+
+// CategoryCreateHandler handles creating a new category
+func CategoryCreateHandler(c *gin.Context) {
+	log.Println("=== CategoryCreateHandler START ===")
+
+	// Parse request body
+	var requestBody struct {
+		Name   string `json:"name"`
+		Parent string `json:"parent"`
+	}
+
+	log.Println("Attempting to bind JSON")
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		log.Printf("Error binding JSON: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Failed to parse request: %v", err),
+		})
+		return
+	}
+
+	categoryName := requestBody.Name
+	parentFolder := requestBody.Parent
+
+	log.Printf("Received category name: %s", categoryName)
+	log.Printf("Parent folder: %s", parentFolder)
+
+	if categoryName == "" {
+		log.Println("Error: Category name is empty")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Category name is required",
+		})
+		return
+	}
+
+	// Determine full path based on parent
+	var fullPath string
+	if parentFolder != "" {
+		fullPath = parentFolder + "/" + categoryName
+	} else {
+		fullPath = categoryName
+	}
+
+	log.Printf("Creating category at path: %s", fullPath)
+
+	// Create the category folder
+	if err := store.CreateFolder(fullPath); err != nil {
+		log.Printf("Error creating category: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to create category: %v", err),
+		})
+		return
+	}
+
+	log.Printf("Successfully created category: %s", fullPath)
+	log.Println("=== CategoryCreateHandler END ===")
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Category '%s' created successfully", categoryName),
+	})
+}
+
+// FolderTreeItem represents an item in the folder tree structure
+type FolderTreeItem struct {
+	Name        string
+	Path        string
+	HasChildren bool
+	IsExpanded  bool
+	Children    []FolderTreeItem
+}
+
+// CategoryHandler handles viewing a category/folder
+func CategoryHandler(c *gin.Context) {
+	path := c.Param("path")
+	log.Printf("=== CategoryHandler START: %s ===", path)
+
+	// Get all folders to build the folder tree
+	allFolders, err := store.ListFolders()
+	if err != nil {
+		log.Printf("Error getting folders: %v", err)
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": fmt.Sprintf("Failed to get folders: %v", err),
+		})
+		return
+	}
+
+	// Get root folders first (those without a parent)
+	var rootFolders []string
+	for _, folder := range allFolders {
+		if !strings.Contains(folder, "/") {
+			rootFolders = append(rootFolders, folder)
+		}
+	}
+
+	// Build complete folder tree structure
+	var folderTree []FolderTreeItem
+	for _, rootFolder := range rootFolders {
+		// Create a root tree item
+		item := FolderTreeItem{
+			Name:        rootFolder,
+			Path:        rootFolder,
+			HasChildren: hasChildren(allFolders, rootFolder),
+			IsExpanded:  isParentOf(rootFolder, path),
+		}
+
+		// If this folder is in the path to the current folder, expand it
+		if item.IsExpanded {
+			// Recursively build the children tree
+			item.Children = buildFolderSubtree(allFolders, rootFolder, path)
+		}
+
+		folderTree = append(folderTree, item)
+	}
+
+	// Get subfolders of current folder
+	var subFolders []FolderTreeItem
+	for _, folder := range allFolders {
+		// Check if this is a direct child of the current folder
+		parentPath := getParentPath(folder)
+		if parentPath == path {
+			subFolders = append(subFolders, FolderTreeItem{
+				Name: getNameFromPath(folder),
+				Path: folder,
+			})
+		}
+	}
+
+	// Get notes in this folder
+	notes, err := store.GetPagesInFolder(path)
+	if err != nil {
+		log.Printf("Error getting notes in folder: %v", err)
+		// Continue without notes if there's an error
+	}
+
+	user := c.MustGet("user")
+	folderName := getNameFromPath(path)
+
+	c.HTML(http.StatusOK, "folder.html", gin.H{
+		"User":        user,
+		"FolderName":  folderName,
+		"FolderPath":  path,
+		"FolderTree":  folderTree,
+		"SubFolders":  subFolders,
+		"Notes":       notes,
+		"CurrentPath": path,
+	})
+	log.Printf("=== CategoryHandler END: %s ===", path)
+}
+
+// Helper functions for folder tree
+func getNameFromPath(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
+}
+
+func getParentPath(path string) string {
+	lastSlashIndex := strings.LastIndex(path, "/")
+	if lastSlashIndex == -1 {
+		return ""
+	}
+	return path[:lastSlashIndex]
+}
+
+func hasChildren(folders []string, path string) bool {
+	for _, folder := range folders {
+		if strings.HasPrefix(folder, path+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func isParentOf(folder, path string) bool {
+	return strings.HasPrefix(path, folder+"/")
+}
+
+func getDirectChildren(folders []string, parentPath string) []FolderTreeItem {
+	var children []FolderTreeItem
+	for _, folder := range folders {
+		if getParentPath(folder) == parentPath {
+			children = append(children, FolderTreeItem{
+				Name: getNameFromPath(folder),
+				Path: folder,
+			})
+		}
+	}
+	return children
+}
+
+func buildFolderSubtree(folders []string, rootFolder string, path string) []FolderTreeItem {
+	var children []FolderTreeItem
+	for _, folder := range folders {
+		if getParentPath(folder) == rootFolder {
+			childItem := FolderTreeItem{
+				Name:        getNameFromPath(folder),
+				Path:        folder,
+				HasChildren: hasChildren(folders, folder),
+				IsExpanded:  isParentOf(folder, path),
+			}
+			if childItem.IsExpanded {
+				childItem.Children = buildFolderSubtree(folders, folder, path)
+			}
+			children = append(children, childItem)
+		}
+	}
+	return children
 }

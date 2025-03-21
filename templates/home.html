@@ -80,28 +80,34 @@
                         <a href="/logout" class="logout-btn">Logout</a>
                     </div>
                     <div class="header-actions">
+                        <a href="/category/new" class="add-category-btn">
+                            <i class="fas fa-folder-plus"></i> New Category
+                        </a>
                         <a href="/new" class="add-note-btn">
                             <i class="fas fa-plus"></i> New Note
                         </a>
                     </div>
                 </header>
-                <div class="wiki-list">
-                    {{range $index, $page := .Pages}}
-                    <div class="wiki-list-item">
-                        <a href="/view/{{$page.Title}}" class="row-link">
-                            <span class="title-link">
-                                <span class="item-index">{{add $index 1}}.</span>
-                                {{$page.Title}}
-                            </span>
+                
+                <div class="content-body">
+                    <!-- Categories Section -->
+                    {{if .Categories}}
+                    <div class="section-title">
+                        <h3>Categories</h3>
+                    </div>
+                    <div class="categories-grid">
+                        {{range $index, $category := .Categories}}
+                        <a href="/category/{{$category}}" class="category-box">
+                            <div class="category-icon">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div class="category-name">{{$category}}</div>
                         </a>
-                        <div class="action-buttons">
-                            <a href="/edit/{{$page.Title}}" class="edit-link">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
-                            <a href="#" onclick="confirmDelete('{{$page.Title}}')" class="delete-link">
-                                <i class="fas fa-trash"></i> Delete
-                            </a>
-                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="empty-wiki-message">
+                        <p>Your wiki is empty! Create category to continue</p>
                     </div>
                     {{end}}
                 </div>
@@ -111,6 +117,24 @@
     <button class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon"></i>
     </button>
+    
+    <!-- Category Popup -->
+    <div id="category-popup" class="popup-overlay">
+        <div class="popup-content">
+            <h3>Create New Category</h3>
+            <div class="popup-form">
+                <div class="form-group">
+                    <label for="category-name">Category Name</label>
+                    <input type="text" id="category-name" placeholder="Enter category name">
+                </div>
+                <div class="popup-actions">
+                    <button id="cancel-category" class="btn-cancel">Cancel</button>
+                    <button id="save-category" class="btn-save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="/static/js/theme.js"></script>
     <script>
         function confirmDelete(title) {
@@ -134,6 +158,108 @@
                 });
             }
         }
+        
+        // Category popup functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const categoryBtn = document.querySelector('.add-category-btn');
+            const categoryPopup = document.getElementById('category-popup');
+            const cancelBtn = document.getElementById('cancel-category');
+            const saveBtn = document.getElementById('save-category');
+            const categoryInput = document.getElementById('category-name');
+            
+            // Open popup when "New Category" button is clicked
+            categoryBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                categoryPopup.classList.add('active');
+                categoryInput.focus();
+            });
+            
+            // Close popup when Cancel button is clicked
+            cancelBtn.addEventListener('click', function() {
+                categoryPopup.classList.remove('active');
+                categoryInput.value = '';
+            });
+            
+            // Close popup when clicking outside
+            categoryPopup.addEventListener('click', function(e) {
+                if (e.target === categoryPopup) {
+                    categoryPopup.classList.remove('active');
+                    categoryInput.value = '';
+                }
+            });
+            
+            // Handle form submission
+            saveBtn.addEventListener('click', function() {
+                const categoryName = categoryInput.value.trim();
+                
+                if (!categoryName) {
+                    alert('Please enter a category name');
+                    return;
+                }
+                
+                // Create the request body
+                const requestBody = JSON.stringify({ name: categoryName });
+                console.log('Sending request with body:', requestBody);
+                
+                // Show loading indicator
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = 'Creating...';
+                
+                // Send request to create category
+                fetch('/category/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    
+                    // Try to parse as JSON
+                    return response.text().then(text => {
+                        console.log('Response text:', text);
+                        
+                        try {
+                            // If it's valid JSON, parse it
+                            if (text && text.trim()) {
+                                return JSON.parse(text);
+                            }
+                            return { success: response.ok };
+                        } catch (e) {
+                            console.error('JSON parse error:', e);
+                            // If it's not valid JSON, return the text
+                            return { 
+                                success: false, 
+                                error: 'Invalid server response: ' + text
+                            };
+                        }
+                    });
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Success - reload the page
+                        window.location.reload();
+                    } else {
+                        // Error - show message
+                        throw new Error(data.error || 'Failed to create category');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert(error.message || 'Error creating category. Please try again.');
+                })
+                .finally(() => {
+                    // Reset button state
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = 'Save';
+                    
+                    // Close popup on error
+                    categoryPopup.classList.remove('active');
+                    categoryInput.value = '';
+                });
+            });
+        });
     </script>
 </body>
 </html> 

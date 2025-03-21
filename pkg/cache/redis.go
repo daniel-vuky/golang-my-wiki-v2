@@ -248,3 +248,48 @@ func (c *RedisCache) InvalidateCache() error {
 	log.Println("Invalidated cache for page lists and folder lists")
 	return nil
 }
+
+// SetFolderPages caches pages for a specific folder
+func (c *RedisCache) SetFolderPages(folderPath string, pages []types.Page) error {
+	if !c.enabled {
+		return nil
+	}
+
+	data, err := json.Marshal(pages)
+	if err != nil {
+		return fmt.Errorf("failed to marshal folder pages: %v", err)
+	}
+
+	key := "folder_pages:" + folderPath
+	if err := c.client.Set(c.ctx, key, data, c.expirationPeriod).Err(); err != nil {
+		return fmt.Errorf("failed to cache folder pages: %v", err)
+	}
+
+	log.Printf("Cached %d pages for folder: %s", len(pages), folderPath)
+	return nil
+}
+
+// GetFolderPages retrieves pages for a specific folder from cache
+func (c *RedisCache) GetFolderPages(folderPath string) ([]types.Page, bool, error) {
+	if !c.enabled {
+		return nil, false, nil
+	}
+
+	key := "folder_pages:" + folderPath
+	data, err := c.client.Get(c.ctx, key).Bytes()
+	if err == redis.Nil {
+		// Cache miss
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get folder pages from cache: %v", err)
+	}
+
+	var pages []types.Page
+	if err := json.Unmarshal(data, &pages); err != nil {
+		return nil, false, fmt.Errorf("failed to unmarshal folder pages: %v", err)
+	}
+
+	log.Printf("Cache hit for folder pages: %s", folderPath)
+	return pages, true, nil
+}

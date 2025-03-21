@@ -134,3 +134,38 @@ func (l *LocalStorage) DeleteFolder(path string) error {
 	}
 	return nil
 }
+
+// GetPagesInFolder retrieves all pages from a specific folder
+func (l *LocalStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
+	var pages []types.Page
+	fullPath := filepath.Join(l.baseDir, folderPath)
+
+	// Read all files in the directory
+	files, err := ioutil.ReadDir(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read folder: %v", err)
+	}
+
+	// Filter for .txt files and create Page objects
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".txt") {
+			relativePath := filepath.Join(folderPath, file.Name())
+			page, err := l.GetPage(relativePath)
+			if err != nil {
+				continue // Skip files that can't be read
+			}
+
+			// Add a preview of the content
+			contentStr := page.Content
+			if len(contentStr) > 150 {
+				page.Preview = contentStr[:150] + "..."
+			} else {
+				page.Preview = contentStr
+			}
+
+			pages = append(pages, *page)
+		}
+	}
+
+	return pages, nil
+}

@@ -74,6 +74,10 @@ func main() {
 	router.POST("/delete/:title", handlers.DeleteHandler)
 	router.GET("/delete/:title", handlers.DeleteHandler)
 
+	// Category routes
+	router.POST("/category/create", handlers.CategoryCreateHandler)
+	router.GET("/category/:path", handlers.CategoryHandler)
+
 	// Auth routes
 	router.GET("/login", handlers.LoginHandler)
 	router.GET("/auth/google", handlers.GoogleLoginHandler)
