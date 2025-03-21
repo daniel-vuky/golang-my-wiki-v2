@@ -375,17 +375,22 @@
 
 /* Second level tree items - 25px indentation */
 .folder-tree > .tree-item > .subtree > .tree-item > .tree-link {
-    padding-left: calc(1.5rem + 25px);
+    padding-left: calc(1.5rem + 15px);
 }
 
 /* Third level tree items - 50px indentation */
 .folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
-    padding-left: calc(1.5rem + 50px);
+    padding-left: calc(1.5rem + 30px);
 }
 
 /* Fourth level tree items - 75px indentation */
 .folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
-    padding-left: calc(1.5rem + 75px);
+    padding-left: calc(1.5rem + 45px);
+}
+
+/* Five level tree items - 100px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 60px);
 }
 
 /* Remove previously added margin */

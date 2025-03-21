@@ -91,11 +91,45 @@ func ViewHandler(c *gin.Context) {
 	log.Printf("Page content length: %d", len(page.Content))
 	log.Printf("Page content preview: %s", page.Content[:min(100, len(page.Content))])
 
+	// Get the folder tree to use in the sidebar
+	folderTree, err := GetFolderTree(store, folderPath)
+	if err != nil {
+		log.Printf("Error building folder tree: %v", err)
+		// Continue without folder tree - not critical
+	}
+
+	// Create breadcrumbs for the view
+	var breadcrumbs []map[string]string
+	if folderPath != "" {
+		// Add the home breadcrumb
+		breadcrumbs = append(breadcrumbs, map[string]string{
+			"name": "Home",
+			"path": "",
+		})
+
+		// Build breadcrumbs for folder path
+		parts := strings.Split(folderPath, "/")
+		partialPath := ""
+		for _, part := range parts {
+			if partialPath != "" {
+				partialPath += "/"
+			}
+			partialPath += part
+			breadcrumbs = append(breadcrumbs, map[string]string{
+				"name": part,
+				"path": partialPath,
+			})
+		}
+	}
+
 	c.HTML(http.StatusOK, "view.html", gin.H{
-		"Title":    page.Title,
-		"Content":  page.Content,
-		"SideMenu": models.GetMenuItems(title, store),
-		"User":     c.MustGet("user"),
+		"Title":       page.Title,
+		"Content":     page.Content,
+		"FolderTree":  folderTree,
+		"FolderPath":  folderPath,
+		"CurrentPath": folderPath, // For highlighting the active folder
+		"Breadcrumbs": breadcrumbs,
+		"User":        c.MustGet("user"),
 	})
 	log.Printf("=== ViewHandler END: %s ===", title)
 }
@@ -109,16 +143,49 @@ func EditHandler(c *gin.Context) {
 	folderPath := c.Query("folder")
 	log.Printf("Folder path from query: %s", folderPath)
 
+	// Get the folder tree to use in the sidebar
+	folderTree, err := GetFolderTree(store, folderPath)
+	if err != nil {
+		log.Printf("Error building folder tree: %v", err)
+		// Continue without folder tree - not critical
+	}
+
+	// Create breadcrumbs for the edit page
+	var breadcrumbs []map[string]string
+	if folderPath != "" {
+		// Add the home breadcrumb
+		breadcrumbs = append(breadcrumbs, map[string]string{
+			"name": "Home",
+			"path": "",
+		})
+
+		// Build breadcrumbs for folder path
+		parts := strings.Split(folderPath, "/")
+		partialPath := ""
+		for _, part := range parts {
+			if partialPath != "" {
+				partialPath += "/"
+			}
+			partialPath += part
+			breadcrumbs = append(breadcrumbs, map[string]string{
+				"name": part,
+				"path": partialPath,
+			})
+		}
+	}
+
 	// Handle new page creation
 	if title == "" || title == "new" {
 		log.Printf("Creating new page form")
 		c.HTML(http.StatusOK, "edit.html", gin.H{
-			"Title":      "",
-			"Content":    "",
-			"IsNewPage":  true,
-			"FolderPath": folderPath, // Pass the folder path to the template
-			"SideMenu":   models.GetMenuItems("", store),
-			"User":       c.MustGet("user"),
+			"Title":       "",
+			"Content":     "",
+			"IsNewPage":   true,
+			"FolderPath":  folderPath, // Pass the folder path to the template
+			"FolderTree":  folderTree,
+			"CurrentPath": folderPath,  // For highlighting the active folder
+			"Breadcrumbs": breadcrumbs, // Add breadcrumbs
+			"User":        c.MustGet("user"),
 		})
 		log.Printf("=== EditHandler END (new page) ===")
 		return
@@ -148,12 +215,14 @@ func EditHandler(c *gin.Context) {
 
 	log.Printf("Found page, title: %s, content length: %d", page.Title, len(page.Content))
 	c.HTML(http.StatusOK, "edit.html", gin.H{
-		"Title":      page.Title,
-		"Content":    page.Content,
-		"IsNewPage":  false,
-		"FolderPath": folderPath, // Pass the folder path to the template
-		"SideMenu":   models.GetMenuItems(page.Title, store),
-		"User":       c.MustGet("user"),
+		"Title":       page.Title,
+		"Content":     page.Content,
+		"IsNewPage":   false,
+		"FolderPath":  folderPath, // Pass the folder path to the template
+		"FolderTree":  folderTree,
+		"CurrentPath": folderPath,  // For highlighting the active folder
+		"Breadcrumbs": breadcrumbs, // Add breadcrumbs
+		"User":        c.MustGet("user"),
 	})
 	log.Printf("=== EditHandler END (success) ===")
 }
@@ -521,11 +590,26 @@ func getParentPath(path string) string {
 	return parentPath
 }
 
+// Get the store from the context
+func getStoreFromContext(c *gin.Context) (types.Storage, error) {
+	storeVal, exists := c.Get("store")
+	if !exists {
+		return nil, fmt.Errorf("store not found in context")
+	}
+	store, ok := storeVal.(types.Storage)
+	if !ok {
+		return nil, fmt.Errorf("store is not of type Storage")
+	}
+	return store, nil
+}
+
+// Check if a folder has any children (subfolders or notes)
 func hasChildren(folders []string, path string) bool {
 	log.Printf("Checking if folder '%s' has children...", path)
 	prefix := path + "/"
 	log.Printf("Looking for prefix: '%s'", prefix)
 
+	// First check for subfolder children
 	for _, folder := range folders {
 		if strings.HasPrefix(folder, prefix) {
 			log.Printf("Found child folder: '%s' is a child of '%s'", folder, path)
@@ -533,8 +617,22 @@ func hasChildren(folders []string, path string) bool {
 		}
 	}
 
-	log.Printf("No children found for '%s'", path)
+	log.Printf("No subfolder children found for '%s'", path)
 	return false
+}
+
+// Check if a folder might have notes - this will be used in GetFolderChildrenHandler
+func hasNotes(path string, store types.Storage) bool {
+	notes, err := store.GetPagesInFolder(path)
+	if err != nil {
+		log.Printf("Error checking for notes in folder '%s': %v", path, err)
+		return false
+	}
+	hasNotes := len(notes) > 0
+	if hasNotes {
+		log.Printf("Found %d notes in folder '%s'", len(notes), path)
+	}
+	return hasNotes
 }
 
 func isParentOf(folder, path string) bool {
@@ -649,10 +747,19 @@ func GetFolderChildrenHandler(c *gin.Context) {
 	for _, folder := range allFolders {
 		// Only include direct children
 		if getParentPath(folder) == parentPath {
+			// Check if folder has subfolder children
+			hasSubfolders := hasChildren(allFolders, folder)
+
+			// Check if folder has note children (if no subfolder children)
+			hasAnyChildren := hasSubfolders
+			if !hasSubfolders {
+				hasAnyChildren = hasNotes(folder, store)
+			}
+
 			child := FolderTreeItem{
 				Name:        getNameFromPath(folder),
 				Path:        folder,
-				HasChildren: hasChildren(allFolders, folder),
+				HasChildren: hasAnyChildren,
 				IsExpanded:  false,
 				Children:    []FolderTreeItem{}, // Empty children array
 				IsNote:      false,              // This is a folder

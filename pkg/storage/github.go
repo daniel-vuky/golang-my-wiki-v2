@@ -533,8 +533,10 @@ func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error
 			continue
 		}
 
-		if *content.Type == "file" && strings.HasSuffix(*content.Name, ".txt") {
-			log.Printf("Processing file: %s", *content.Name)
+		// Check if this is a file and has a .txt extension (case insensitive)
+		fileName := *content.Name
+		if *content.Type == "file" && (strings.HasSuffix(strings.ToLower(fileName), ".txt")) {
+			log.Printf("Processing file: %s", fileName)
 
 			// Get the file content
 			fileContent, _, _, err := g.client.Repositories.GetContents(
@@ -557,7 +559,7 @@ func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error
 				continue
 			}
 
-			title := strings.TrimSuffix(*content.Name, ".txt")
+			title := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 
 			// Add page to results
 			page := types.Page{
