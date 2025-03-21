@@ -54,6 +54,14 @@
     transform: translateY(-1px);
 }
 
+.button.primary.disabled, 
+.button.primary:disabled {
+    background: #8bc99f;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+}
+
 .button.secondary {
     background: var(--accent-color);
     color: white;
@@ -62,6 +70,21 @@
 .button.secondary:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
+}
+
+.button.info {
+    background: #17a2b8;
+    color: white;
+}
+
+.button.info:hover {
+    background: #138496;
+    transform: translateY(-1px);
+}
+
+.button.info.loading {
+    opacity: 0.7;
+    pointer-events: none;
 }
 
 /* Content Body */
@@ -103,12 +126,32 @@
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
     box-shadow: var(--card-shadow);
+    position: relative;
 }
 
 .category-box:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     border-color: var(--accent-color);
+}
+
+.category-box.has-children::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+}
+
+.children-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 8px;
+    color: var(--accent-color);
 }
 
 .category-icon {
@@ -237,61 +280,129 @@
 }
 
 .tree-item {
-    margin: 0.25rem 0;
     position: relative;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+}
+
+.tree-item:not(:last-child) {
+    margin-bottom: 2px;
 }
 
 .tree-link {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem;
+    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
     text-decoration: none;
     color: var(--text-primary);
     border-radius: 4px;
     transition: all 0.2s;
+    font-size: 0.9rem;
+    width: calc(100% - 8px);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .tree-link:hover {
     background-color: var(--bg-hover);
+    color: var(--accent-color);
 }
 
 .tree-link.active {
-    background-color: var(--bg-active);
+    background-color: var(--bg-hover);
     color: var(--accent-color);
+    font-weight: 500;
+    border-left: 3px solid var(--accent-color);
+}
+
+.tree-item .tree-link {
+    padding-left: 1.5rem;
+}
+
+.tree-item.has-children > .tree-link {
     font-weight: 500;
 }
 
 .expand-icon {
     display: inline-flex;
+    width: 16px;
+    height: 16px;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    position: absolute;
-    left: -18px;
-    top: 8px;
     cursor: pointer;
-    transition: transform 0.2s;
+    position: absolute;
+    left: 4px;
+    top: 1rem;
+    z-index: 5;
+    color: var(--text-secondary);
+    transition: all 0.2s;
 }
 
-.tree-item.expanded > .expand-icon {
+.expand-icon:hover {
+    color: var(--accent-color);
+}
+
+.expand-icon i {
+    transition: transform 0.2s ease;
+    font-size: 0.8rem;
+}
+
+.tree-item.expanded > .expand-icon i {
     transform: rotate(90deg);
 }
 
 .subtree {
     list-style: none;
-    padding-left: 1.5rem;
-    margin: 0.25rem 0;
+    margin-left: 0;
+    padding-left: 0;
     display: none;
+    overflow: hidden;
+    transition: height 0.2s ease;
+    border-left: 1px solid var(--border-color);
+}
+
+/* Position the border appropriately */
+.tree-item > .subtree {
+    margin-left: 12px;
+}
+
+/* First level tree items - no indentation */
+.folder-tree > .tree-item > .tree-link {
+    padding-left: 1.5rem;
+}
+
+/* Second level tree items - 25px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 25px);
+}
+
+/* Third level tree items - 50px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 50px);
+}
+
+/* Fourth level tree items - 75px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 75px);
+}
+
+/* Remove previously added margin */
+.subtree .tree-link {
+    margin-left: 0;
+}
+
+body.dark-theme .subtree {
+    border-left-color: rgba(255, 255, 255, 0.1);
 }
 
 .tree-item.expanded > .subtree {
     display: block;
 }
 
-.has-children {
-    margin-left: 18px;
+.not-loaded {
+    /* No display style here to not override the expanded state */
 }
 
 /* Popup Overlay (Same as home.css) */
@@ -440,4 +551,152 @@
     .note-preview {
         display: none;
     }
+}
+
+.modal-footer .button.primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.fa-spinner {
+    margin-right: 5px;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-content {
+    background-color: white;
+    padding: 30px 50px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.loading-content i {
+    font-size: 40px;
+    color: #007bff;
+    margin-bottom: 15px;
+}
+
+.loading-content p {
+    font-size: 18px;
+    margin: 0;
+    color: #333;
+}
+
+/* Dark theme adjustments */
+body.dark-theme .loading-content {
+    background-color: #2a2a2a;
+}
+
+body.dark-theme .loading-content p {
+    color: #f0f0f0;
+}
+
+body.dark-theme .loading-content i {
+    color: #4a9eff;
+}
+
+/* Loading state styles */
+.loading-item, .empty-item, .error-item {
+    padding: 8px 8px 8px 25px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.loading-item i {
+    margin-right: 5px;
+    color: var(--accent-color);
+}
+
+.empty-item {
+    font-style: italic;
+}
+
+.error-item {
+    color: #e74c3c;
+}
+
+/* Add specific margin only to tree links inside subtrees */
+.subtree .tree-link {
+    margin-left: 0;
+}
+
+/* Common styling for all tree items */
+.tree-item .tree-link {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tree-item .tree-link i {
+    margin-right: 5px;
+}
+
+.tree-item .tree-link.active,
+.tree-item .tree-link:hover {
+    color: var(--accent-color);
+}
+
+.tree-item .tree-link.active i,
+.tree-item .tree-link:hover i {
+    color: var(--accent-color);
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.breadcrumbs ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.breadcrumbs li {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #666;
+}
+
+.breadcrumbs a {
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbs a.active {
+    font-weight: bold;
+    color: #333;
+}
+
+.breadcrumbs .separator {
+    margin: 0 8px;
+    color: #999;
 } 

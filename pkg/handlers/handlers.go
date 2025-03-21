@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
+	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/models"
+	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage/types"
 	"github.com/gin-gonic/gin"
 )
@@ -23,7 +26,7 @@ func HomeHandler(c *gin.Context) {
 	log.Println("=== HomeHandler START ===")
 
 	// Get all categories (folders)
-	categories, err := store.ListFolders()
+	allFolders, err := store.ListFolders()
 	if err != nil {
 		log.Printf("Error getting categories: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -32,16 +35,25 @@ func HomeHandler(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Found %d categories", len(categories))
-	for _, category := range categories {
-		log.Printf("Category: %s", category)
+	// Filter to only show root-level folders
+	var rootFolders []string
+	for _, folder := range allFolders {
+		// Only include folders that don't have a slash (not children)
+		if !strings.Contains(folder, "/") {
+			rootFolders = append(rootFolders, folder)
+		}
+	}
+
+	log.Printf("Found %d root categories", len(rootFolders))
+	for _, category := range rootFolders {
+		log.Printf("Root category: %s", category)
 	}
 
 	user := c.MustGet("user")
 	log.Printf("User: %+v", user)
 
 	c.HTML(http.StatusOK, "home.html", gin.H{
-		"Categories": categories,
+		"Categories": rootFolders,
 		"User":       user,
 		"SideMenu":   models.GetMenuItems("", store),
 	})
@@ -54,7 +66,19 @@ func ViewHandler(c *gin.Context) {
 	title := c.Param("title")
 	log.Printf("=== ViewHandler START: %s ===", title)
 
-	page, err := store.GetPage(title)
+	// Get folder parameter (if viewing from a folder)
+	folderPath := c.Query("folder")
+
+	// If folder is specified, prepend it to the title path
+	var fullPath string
+	if folderPath != "" {
+		fullPath = folderPath + "/" + title
+		log.Printf("Viewing page in folder: %s", fullPath)
+	} else {
+		fullPath = title
+	}
+
+	page, err := store.GetPage(fullPath)
 	if err != nil {
 		log.Printf("Error getting page: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
@@ -81,15 +105,20 @@ func EditHandler(c *gin.Context) {
 	title := c.Param("title")
 	log.Printf("=== EditHandler START: %s ===", title)
 
+	// Get folder parameter (if creating from a folder)
+	folderPath := c.Query("folder")
+	log.Printf("Folder path from query: %s", folderPath)
+
 	// Handle new page creation
 	if title == "" || title == "new" {
 		log.Printf("Creating new page form")
 		c.HTML(http.StatusOK, "edit.html", gin.H{
-			"Title":     "",
-			"Content":   "",
-			"IsNewPage": true,
-			"SideMenu":  models.GetMenuItems("", store),
-			"User":      c.MustGet("user"),
+			"Title":      "",
+			"Content":    "",
+			"IsNewPage":  true,
+			"FolderPath": folderPath, // Pass the folder path to the template
+			"SideMenu":   models.GetMenuItems("", store),
+			"User":       c.MustGet("user"),
 		})
 		log.Printf("=== EditHandler END (new page) ===")
 		return
@@ -97,7 +126,17 @@ func EditHandler(c *gin.Context) {
 
 	// Editing an existing page - GetPage will handle adding .txt
 	log.Printf("Attempting to edit page: %s", title)
-	page, err := store.GetPage(title)
+
+	// If folder is specified, prepend it to the title path
+	var fullPath string
+	if folderPath != "" {
+		fullPath = folderPath + "/" + title
+		log.Printf("Editing page in folder: %s", fullPath)
+	} else {
+		fullPath = title
+	}
+
+	page, err := store.GetPage(fullPath)
 	if err != nil {
 		log.Printf("Error getting page: %v", err)
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
@@ -109,11 +148,12 @@ func EditHandler(c *gin.Context) {
 
 	log.Printf("Found page, title: %s, content length: %d", page.Title, len(page.Content))
 	c.HTML(http.StatusOK, "edit.html", gin.H{
-		"Title":     page.Title,
-		"Content":   page.Content,
-		"IsNewPage": false,
-		"SideMenu":  models.GetMenuItems(page.Title, store),
-		"User":      c.MustGet("user"),
+		"Title":      page.Title,
+		"Content":    page.Content,
+		"IsNewPage":  false,
+		"FolderPath": folderPath, // Pass the folder path to the template
+		"SideMenu":   models.GetMenuItems(page.Title, store),
+		"User":       c.MustGet("user"),
 	})
 	log.Printf("=== EditHandler END (success) ===")
 }
@@ -132,6 +172,10 @@ func SaveHandler(c *gin.Context) {
 	originalTitle := c.PostForm("original_title")
 	log.Printf("Original title: %s", originalTitle)
 
+	// Get the folder path if present
+	folderPath := c.PostForm("folder_path")
+	log.Printf("Folder path from form: %s", folderPath)
+
 	if title == "" || content == "" {
 		log.Println("Error: Title or content is empty")
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
@@ -140,10 +184,22 @@ func SaveHandler(c *gin.Context) {
 		return
 	}
 
-	// Create a page object with the new title
+	// Determine the full path based on folder
+	var filePath string
+	if folderPath != "" {
+		// If folder path is provided, create the page in that folder
+		filePath = folderPath + "/" + title + ".txt"
+		log.Printf("Creating page in folder: %s", filePath)
+	} else {
+		// Otherwise, create at root level
+		filePath = title + ".txt"
+		log.Printf("Creating page at root: %s", filePath)
+	}
+
+	// Create a page object with the new title and path
 	page := &types.Page{
 		Title:   title,
-		Path:    title + ".txt",
+		Path:    filePath,
 		Content: content,
 		Body:    []byte(content),
 	}
@@ -269,6 +325,23 @@ func CategoryCreateHandler(c *gin.Context) {
 		fullPath = categoryName
 	}
 
+	// Get max category level from config
+	maxLevel := config.GetMaxCategoryLevel()
+
+	// Check category nesting level
+	if fullPath != "" {
+		levels := strings.Count(fullPath, "/") + 1
+		log.Printf("Category level: %d (max %d)", levels, maxLevel)
+
+		if levels > maxLevel {
+			log.Printf("Error: Maximum category nesting level reached (%d)", maxLevel)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Maximum category nesting level reached (%d levels max)", maxLevel),
+			})
+			return
+		}
+	}
+
 	log.Printf("Creating category at path: %s", fullPath)
 
 	// Create the category folder
@@ -289,21 +362,59 @@ func CategoryCreateHandler(c *gin.Context) {
 	})
 }
 
-// FolderTreeItem represents an item in the folder tree structure
+// FolderTreeItem represents an item in the folder tree
 type FolderTreeItem struct {
 	Name        string
 	Path        string
 	HasChildren bool
 	IsExpanded  bool
 	Children    []FolderTreeItem
+	IsNote      bool
 }
 
 // CategoryHandler handles viewing a category/folder
 func CategoryHandler(c *gin.Context) {
-	path := c.Param("path")
-	log.Printf("=== CategoryHandler START: %s ===", path)
+	pathParam := c.Param("path")
 
-	// Get all folders to build the folder tree
+	// When using *path, the param includes the leading slash,
+	// so we need to trim it to get the actual path
+	path := strings.TrimPrefix(pathParam, "/")
+
+	log.Printf("=== CategoryHandler START: %s (from param: %s) ===", path, pathParam)
+
+	// Force refresh parameter check
+	forceRefresh := c.Query("refresh") == "true"
+	if forceRefresh {
+		log.Printf("Force refresh requested, invalidating folder cache")
+		// Access the storage as CachedGitHubStorage to invalidate cache
+		if cacheable, ok := store.(interface{ InvalidateCache() error }); ok {
+			if err := cacheable.InvalidateCache(); err != nil {
+				log.Printf("Error invalidating cache: %v", err)
+			}
+		}
+	}
+
+	// Get the folder tree using our helper function
+	folderTree, err := GetFolderTree(store, path)
+	if err != nil {
+		log.Printf("Error building folder tree: %v", err)
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": fmt.Sprintf("Failed to build folder tree: %v", err),
+		})
+		return
+	}
+
+	// Get the pages in this folder
+	notes, err := store.GetPagesInFolder(path)
+	if err != nil {
+		log.Printf("Error getting pages in folder %s: %v", path, err)
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": fmt.Sprintf("Failed to get pages in folder: %v", err),
+		})
+		return
+	}
+
+	// Get all folders
 	allFolders, err := store.ListFolders()
 	if err != nil {
 		log.Printf("Error getting folders: %v", err)
@@ -313,67 +424,84 @@ func CategoryHandler(c *gin.Context) {
 		return
 	}
 
-	// Get root folders first (those without a parent)
-	var rootFolders []string
-	for _, folder := range allFolders {
-		if !strings.Contains(folder, "/") {
-			rootFolders = append(rootFolders, folder)
-		}
-	}
+	// Get the subfolders for this folder
+	subFolders := getDirectChildren(allFolders, path)
 
-	// Build complete folder tree structure
-	var folderTree []FolderTreeItem
-	for _, rootFolder := range rootFolders {
-		// Create a root tree item
-		item := FolderTreeItem{
-			Name:        rootFolder,
-			Path:        rootFolder,
-			HasChildren: hasChildren(allFolders, rootFolder),
-			IsExpanded:  isParentOf(rootFolder, path),
-		}
-
-		// If this folder is in the path to the current folder, expand it
-		if item.IsExpanded {
-			// Recursively build the children tree
-			item.Children = buildFolderSubtree(allFolders, rootFolder, path)
-		}
-
-		folderTree = append(folderTree, item)
-	}
-
-	// Get subfolders of current folder
-	var subFolders []FolderTreeItem
-	for _, folder := range allFolders {
-		// Check if this is a direct child of the current folder
-		parentPath := getParentPath(folder)
-		if parentPath == path {
-			subFolders = append(subFolders, FolderTreeItem{
-				Name: getNameFromPath(folder),
-				Path: folder,
-			})
-		}
-	}
-
-	// Get notes in this folder
-	notes, err := store.GetPagesInFolder(path)
-	if err != nil {
-		log.Printf("Error getting notes in folder: %v", err)
-		// Continue without notes if there's an error
-	}
-
-	user := c.MustGet("user")
+	// Set folder name - use last part of path or "Home" for root
 	folderName := getNameFromPath(path)
+	if path == "" {
+		folderName = "Home"
+	}
+
+	// Get breadcrumb trail for this folder
+	breadcrumbs := getBreadcrumbs(path)
+
+	// Calculate current nesting level
+	currentLevel := 0
+	if path != "" {
+		currentLevel = strings.Count(path, "/") + 1
+	}
+
+	// Get max level from config
+	maxLevel := config.GetMaxCategoryLevel()
+
+	// Check if at max nesting level - only if at max level
+	isMaxLevel := currentLevel >= maxLevel
+
+	log.Printf("Loading folder view for %s with %d subfolders and %d notes (level: %d, max: %v, maxLevel: %d)",
+		path, len(subFolders), len(notes), currentLevel, isMaxLevel, maxLevel)
 
 	c.HTML(http.StatusOK, "folder.html", gin.H{
-		"User":        user,
-		"FolderName":  folderName,
-		"FolderPath":  path,
-		"FolderTree":  folderTree,
-		"SubFolders":  subFolders,
-		"Notes":       notes,
-		"CurrentPath": path,
+		"FolderName":      folderName,
+		"FolderPath":      path,
+		"SubFolders":      subFolders,
+		"Notes":           notes,
+		"FolderTree":      folderTree,
+		"CurrentPath":     path,
+		"Breadcrumbs":     breadcrumbs,
+		"CurrentLevel":    currentLevel,
+		"MaxLevel":        maxLevel,
+		"MaxLevelReached": isMaxLevel,
+		"User": gin.H{
+			"Name": "Admin",
+		},
 	})
-	log.Printf("=== CategoryHandler END: %s ===", path)
+
+	log.Printf("=== CategoryHandler END ===")
+}
+
+// getBreadcrumbs creates a breadcrumb trail for a folder path
+func getBreadcrumbs(path string) []map[string]string {
+	if path == "" {
+		return []map[string]string{
+			{"name": "Home", "path": ""},
+		}
+	}
+
+	parts := strings.Split(path, "/")
+	breadcrumbs := make([]map[string]string, len(parts)+1)
+
+	// Add home as first breadcrumb
+	breadcrumbs[0] = map[string]string{
+		"name": "Home",
+		"path": "",
+	}
+
+	// Build up the path parts
+	currentPath := ""
+	for i, part := range parts {
+		if i > 0 {
+			currentPath += "/"
+		}
+		currentPath += part
+
+		breadcrumbs[i+1] = map[string]string{
+			"name": part,
+			"path": currentPath,
+		}
+	}
+
+	return breadcrumbs
 }
 
 // Helper functions for folder tree
@@ -385,17 +513,27 @@ func getNameFromPath(path string) string {
 func getParentPath(path string) string {
 	lastSlashIndex := strings.LastIndex(path, "/")
 	if lastSlashIndex == -1 {
+		log.Printf("Path %s has no parent (no slash found)", path)
 		return ""
 	}
-	return path[:lastSlashIndex]
+	parentPath := path[:lastSlashIndex]
+	log.Printf("Parent of %s is %s", path, parentPath)
+	return parentPath
 }
 
 func hasChildren(folders []string, path string) bool {
+	log.Printf("Checking if folder '%s' has children...", path)
+	prefix := path + "/"
+	log.Printf("Looking for prefix: '%s'", prefix)
+
 	for _, folder := range folders {
-		if strings.HasPrefix(folder, path+"/") {
+		if strings.HasPrefix(folder, prefix) {
+			log.Printf("Found child folder: '%s' is a child of '%s'", folder, path)
 			return true
 		}
 	}
+
+	log.Printf("No children found for '%s'", path)
 	return false
 }
 
@@ -406,10 +544,13 @@ func isParentOf(folder, path string) bool {
 func getDirectChildren(folders []string, parentPath string) []FolderTreeItem {
 	var children []FolderTreeItem
 	for _, folder := range folders {
+		// Only get direct children (parent/child), not deeper descendants (parent/child/grandchild)
 		if getParentPath(folder) == parentPath {
 			children = append(children, FolderTreeItem{
-				Name: getNameFromPath(folder),
-				Path: folder,
+				Name:        getNameFromPath(folder),
+				Path:        folder,
+				HasChildren: hasChildren(folders, folder),
+				IsNote:      false, // This is a folder
 			})
 		}
 	}
@@ -425,6 +566,7 @@ func buildFolderSubtree(folders []string, rootFolder string, path string) []Fold
 				Path:        folder,
 				HasChildren: hasChildren(folders, folder),
 				IsExpanded:  isParentOf(folder, path),
+				IsNote:      false, // This is a folder
 			}
 			if childItem.IsExpanded {
 				childItem.Children = buildFolderSubtree(folders, folder, path)
@@ -433,4 +575,129 @@ func buildFolderSubtree(folders []string, rootFolder string, path string) []Fold
 		}
 	}
 	return children
+}
+
+// GetFolderTree retrieves the folder tree structure for the sidebar
+func GetFolderTree(store storage.Storage, currentPath string) ([]FolderTreeItem, error) {
+	// Get all folders
+	allFolders, err := store.ListFolders()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map of folders to determine parent-child relationships
+	folderPathsMap := make(map[string]bool)
+	for _, folder := range allFolders {
+		folderPathsMap[folder] = true
+	}
+
+	// Get root folders (those without a parent)
+	var rootItems []FolderTreeItem
+
+	for _, folder := range allFolders {
+		parts := strings.Split(folder, "/")
+		if len(parts) == 1 {
+			// This is a root folder
+			name := parts[0]
+
+			// Check if it has children - any folder that starts with this folder + "/"
+			hasChildrenVal := hasChildren(allFolders, folder)
+
+			// Create folder tree item - collapsed by default
+			item := FolderTreeItem{
+				Name:        name,
+				Path:        folder,
+				HasChildren: hasChildrenVal,
+				IsExpanded:  false, // Always collapsed by default, even for current folder
+				Children:    []FolderTreeItem{},
+				IsNote:      false, // This is a folder
+			}
+
+			rootItems = append(rootItems, item)
+		}
+	}
+
+	// Sort root items alphabetically
+	sort.Slice(rootItems, func(i, j int) bool {
+		return strings.ToLower(rootItems[i].Name) < strings.ToLower(rootItems[j].Name)
+	})
+
+	return rootItems, nil
+}
+
+// GetFolderChildrenHandler returns the children of a specific folder as JSON
+func GetFolderChildrenHandler(c *gin.Context) {
+	pathParam := c.Param("path")
+
+	// Trim the leading slash from the path parameter
+	parentPath := strings.TrimPrefix(pathParam, "/")
+
+	log.Printf("=== GetFolderChildrenHandler START: %s (from param: %s) ===", parentPath, pathParam)
+
+	// Get all folders
+	allFolders, err := store.ListFolders()
+	if err != nil {
+		log.Printf("Error getting folders: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to get folders: %v", err),
+		})
+		return
+	}
+
+	// Get direct children folders of the specified folder
+	var children []FolderTreeItem
+	for _, folder := range allFolders {
+		// Only include direct children
+		if getParentPath(folder) == parentPath {
+			child := FolderTreeItem{
+				Name:        getNameFromPath(folder),
+				Path:        folder,
+				HasChildren: hasChildren(allFolders, folder),
+				IsExpanded:  false,
+				Children:    []FolderTreeItem{}, // Empty children array
+				IsNote:      false,              // This is a folder
+			}
+			children = append(children, child)
+		}
+	}
+
+	// Get notes in this folder
+	notes, err := store.GetPagesInFolder(parentPath)
+	if err != nil {
+		log.Printf("Error getting notes in folder: %v", err)
+		// Continue even if we couldn't get notes
+	} else {
+		// Add notes as children
+		for _, note := range notes {
+			// Extract just the filename without .txt extension
+			noteName := note.Title
+
+			noteItem := FolderTreeItem{
+				Name:        noteName,
+				Path:        note.Path,
+				HasChildren: false, // Notes never have children
+				IsExpanded:  false,
+				Children:    []FolderTreeItem{},
+				IsNote:      true, // This is a note, not a folder
+			}
+			children = append(children, noteItem)
+		}
+	}
+
+	// Sort children alphabetically - put folders first, then notes
+	sort.Slice(children, func(i, j int) bool {
+		// If one is a folder and one is a note, folder comes first
+		if children[i].IsNote != children[j].IsNote {
+			return !children[i].IsNote // Folders come first
+		}
+		// Otherwise sort alphabetically
+		return strings.ToLower(children[i].Name) < strings.ToLower(children[j].Name)
+	})
+
+	log.Printf("Found %d children (folders and notes) for folder %s", len(children), parentPath)
+	log.Printf("=== GetFolderChildrenHandler END ===")
+
+	c.JSON(http.StatusOK, gin.H{
+		"children": children,
+	})
 }

@@ -240,6 +240,17 @@ func (cg *CachedGitHubStorage) CreateFolder(path string) error {
 		log.Printf("Failed to invalidate cache: %v", err)
 	}
 
+	// Force refresh of folder list immediately to ensure subfolders are detected
+	folders, err := cg.github.ListFolders()
+	if err != nil {
+		log.Printf("Warning: Failed to refresh folder list after create: %v", err)
+	} else {
+		// Update cache with the new folder list
+		if err := cg.cache.SetFolderList(folders); err != nil {
+			log.Printf("Failed to cache updated folder list: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -284,4 +295,9 @@ func (cg *CachedGitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page
 	}
 
 	return pages, nil
+}
+
+// InvalidateCache invalidates all relevant caches
+func (cg *CachedGitHubStorage) InvalidateCache() error {
+	return cg.cache.InvalidateCache()
 }

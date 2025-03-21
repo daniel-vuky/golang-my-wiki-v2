@@ -244,3 +244,8 @@ func (cl *CachedLocalStorage) GetPagesInFolder(folderPath string) ([]types.Page,
 
 	return pages, nil
 }
+
+// InvalidateCache invalidates all relevant caches
+func (cl *CachedLocalStorage) InvalidateCache() error {
+	return cl.cache.InvalidateCache()
+}

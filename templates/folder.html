@@ -32,37 +32,15 @@
                         </a>
                     </li>
                     {{range .FolderTree}}
-                    <li class="tree-item {{if .HasChildren}}has-children{{end}} {{if .IsExpanded}}expanded{{end}}">
+                    <li class="tree-item {{if .HasChildren}}has-children{{end}}" data-path="{{.Path}}">
                         {{if .HasChildren}}
                         <span class="expand-icon"><i class="fas fa-caret-right"></i></span>
                         {{end}}
                         <a href="/category/{{.Path}}" class="tree-link {{if eq $.CurrentPath .Path}}active{{end}}">
                             <i class="fas fa-folder{{if eq $.CurrentPath .Path}}-open{{end}}"></i> {{.Name}}
                         </a>
-                        {{if and .HasChildren .IsExpanded}}
-                        <ul class="subtree">
-                            {{range .Children}}
-                            <li class="tree-item {{if .HasChildren}}has-children{{end}} {{if .IsExpanded}}expanded{{end}}">
-                                {{if .HasChildren}}
-                                <span class="expand-icon"><i class="fas fa-caret-right"></i></span>
-                                {{end}}
-                                <a href="/category/{{.Path}}" class="tree-link {{if eq $.CurrentPath .Path}}active{{end}}">
-                                    <i class="fas fa-folder{{if eq $.CurrentPath .Path}}-open{{end}}"></i> {{.Name}}
-                                </a>
-                                {{if and .HasChildren .IsExpanded}}
-                                <ul class="subtree">
-                                    {{range .Children}}
-                                    <li class="tree-item">
-                                        <a href="/category/{{.Path}}" class="tree-link {{if eq $.CurrentPath .Path}}active{{end}}">
-                                            <i class="fas fa-folder{{if eq $.CurrentPath .Path}}-open{{end}}"></i> {{.Name}}
-                                        </a>
-                                    </li>
-                                    {{end}}
-                                </ul>
-                                {{end}}
-                            </li>
-                            {{end}}
-                        </ul>
+                        {{if .HasChildren}}
+                        <ul class="subtree not-loaded"></ul>
                         {{end}}
                     </li>
                     {{end}}
@@ -78,12 +56,31 @@
                 <h2>
                     <i class="fas fa-folder-open"></i> {{.FolderName}}
                 </h2>
+                <div class="breadcrumbs">
+                    <ul>
+                        {{range .Breadcrumbs}}
+                        <li>
+                            <a href="{{if eq .path ""}}/ {{else}}/category/{{.path}}{{end}}" {{if eq .path $.FolderPath}}class="active"{{end}}>
+                                {{.name}}
+                            </a>
+                            {{if ne .path $.FolderPath}}
+                            <span class="separator">/</span>
+                            {{end}}
+                        </li>
+                        {{end}}
+                    </ul>
+                </div>
                 <div class="content-actions">
+                    {{if not .MaxLevelReached}}
                     <button id="btn-subcategory" class="button primary">
                         <i class="fas fa-folder-plus"></i> Create Sub Category
                     </button>
+                    {{end}}
                     <a href="/new?folder={{.FolderPath}}" class="button secondary">
                         <i class="fas fa-file-plus"></i> Create Note
+                    </a>
+                    <a href="/category/{{.FolderPath}}?refresh=true" class="button info" id="refreshButton">
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </a>
                 </div>
             </header>
@@ -97,11 +94,16 @@
                     {{if .SubFolders}}
                     <div class="categories-grid">
                         {{range .SubFolders}}
-                        <a href="/category/{{.Path}}" class="category-box">
+                        <a href="/category/{{.Path}}" class="category-box {{if .HasChildren}}has-children{{end}}">
                             <div class="category-icon">
                                 <i class="fas fa-folder"></i>
                             </div>
                             <div class="category-name">{{.Name}}</div>
+                            {{if .HasChildren}}
+                            <div class="children-indicator">
+                                <i class="fas fa-level-down-alt" style="transform: rotate(90deg);"></i>
+                            </div>
+                            {{end}}
                         </a>
                         {{end}}
                     </div>
@@ -121,20 +123,19 @@
                     <div class="notes-list">
                         {{range $index, $note := .Notes}}
                         <div class="note-item">
-                            <a href="/view/{{$note.Title}}" class="note-link">
+                            <a href="/view/{{$note.Title}}?folder={{$.FolderPath}}" class="note-link">
                                 <div class="note-icon">
                                     <i class="fas fa-file-alt"></i>
                                 </div>
                                 <div class="note-details">
                                     <h4 class="note-title">{{$note.Title}}</h4>
-                                    <p class="note-preview">{{$note.Preview}}</p>
                                 </div>
                             </a>
                             <div class="note-actions">
-                                <a href="/edit/{{$note.Title}}" class="action-btn edit-btn">
+                                <a href="/edit/{{$note.Title}}?folder={{$.FolderPath}}" class="action-btn edit-btn">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="#" onclick="confirmDelete('{{$note.Title}}')" class="action-btn delete-btn">
+                                <a href="#" onclick="confirmDelete('{{$.FolderPath}}/{{$note.Title}}')" class="action-btn delete-btn">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>
@@ -168,6 +169,14 @@
         </div>
     </div>
     
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-content">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Creating...</p>
+        </div>
+    </div>
+    
     <button class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon"></i>
     </button>
@@ -176,7 +185,26 @@
     <script>
         // Folder tree expand/collapse functionality
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize tree expand/collapse
             setupTreeExpandCollapse();
+            
+            // Auto-expand path to current folder
+            expandPathToCurrentFolder("{{.CurrentPath}}");
+            
+            // Refresh button functionality
+            const refreshButton = document.getElementById('refreshButton');
+            if (refreshButton) {
+                refreshButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Show loading state
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                    this.classList.add('loading');
+                    
+                    // Redirect to refresh URL
+                    window.location.href = this.getAttribute('href');
+                });
+            }
             
             // Subcategory popup functionality
             const subcategoryBtn = document.getElementById('btn-subcategory');
@@ -202,7 +230,14 @@
                 }
             });
             
-            saveBtn.addEventListener('click', function() {
+            saveBtn.addEventListener('click', createSubcategory);
+            subcategoryInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    createSubcategory();
+                }
+            });
+            
+            function createSubcategory() {
                 const subcategoryName = subcategoryInput.value.trim();
                 
                 if (!subcategoryName) {
@@ -215,11 +250,13 @@
                     name: subcategoryName,
                     parent: "{{.FolderPath}}" 
                 });
-                console.log('Sending request with body:', requestBody);
+                console.log('Creating subcategory:', subcategoryName, 'in parent:', "{{.FolderPath}}");
                 
-                // Show loading indicator
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = 'Creating...';
+                // Close the popup
+                subcategoryPopup.classList.remove('active');
+                
+                // Show loading overlay
+                document.getElementById('loading-overlay').classList.add('active');
                 
                 // Send request to create subcategory
                 fetch('/category/create', {
@@ -230,69 +267,129 @@
                     body: requestBody
                 })
                 .then(response => {
-                    console.log('Response status:', response.status);
-                    
-                    return response.text().then(text => {
-                        console.log('Response text:', text);
-                        
-                        try {
-                            if (text && text.trim()) {
-                                return JSON.parse(text);
-                            }
-                            return { success: response.ok };
-                        } catch (e) {
-                            console.error('JSON parse error:', e);
-                            return { 
-                                success: false, 
-                                error: 'Invalid server response: ' + text
-                            };
-                        }
-                    });
+                    if (!response.ok) {
+                        throw new Error('Server returned ' + response.status);
+                    }
+                    return response.json();
                 })
                 .then(data => {
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        throw new Error(data.error || 'Failed to create subcategory');
-                    }
+                    console.log('Success:', data);
+                    window.location.reload();
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Error creating subcategory: ' + error.message);
-                })
-                .finally(() => {
-                    // Reset button state
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = 'Save';
+                    
+                    // Hide loading overlay on error
+                    document.getElementById('loading-overlay').classList.remove('active');
                 });
-            });
+            }
         });
         
         function setupTreeExpandCollapse() {
-            // Get all expand icons, including those that might be added dynamically
-            document.querySelectorAll('.expand-icon').forEach(icon => {
-                // Remove any existing event listeners to avoid duplicates
-                icon.removeEventListener('click', handleExpandCollapse);
-                // Add event listener
+            // Get all expand icons
+            const expandIcons = document.querySelectorAll('.expand-icon');
+            
+            expandIcons.forEach(icon => {
                 icon.addEventListener('click', handleExpandCollapse);
             });
+            
+            // No auto-expansion, everything stays collapsed by default
         }
         
         function handleExpandCollapse(event) {
-            const treeItem = this.closest('.tree-item');
-            treeItem.classList.toggle('expanded');
+            event.stopPropagation(); // Prevent bubbling
             
-            // Setup event listeners for any newly visible expand icons
-            if (treeItem.classList.contains('expanded')) {
-                const nestedIcons = treeItem.querySelectorAll('.subtree .expand-icon');
-                nestedIcons.forEach(icon => {
-                    icon.removeEventListener('click', handleExpandCollapse);
-                    icon.addEventListener('click', handleExpandCollapse);
-                });
+            const treeItem = this.closest('.tree-item');
+            const subtree = treeItem.querySelector('.subtree');
+            
+            if (!treeItem.classList.contains('expanded')) {
+                // Expanding - Check if we need to load children
+                if (subtree && subtree.classList.contains('not-loaded')) {
+                    const path = treeItem.getAttribute('data-path');
+                    loadFolderChildren(path, subtree);
+                }
             }
             
-            // Stop event propagation to prevent parent handlers from firing
-            event.stopPropagation();
+            // Toggle expanded state
+            treeItem.classList.toggle('expanded');
+            
+            // Toggle visibility of the subtree
+            if (subtree) {
+                if (treeItem.classList.contains('expanded')) {
+                    subtree.style.display = 'block';
+                } else {
+                    subtree.style.display = 'none';
+                }
+            }
+        }
+        
+        // Function to load folder children from API
+        function loadFolderChildren(folderPath, subtree) {
+            // Get folder children via API
+            const apiUrl = folderPath === '' 
+                ? '/api/folders/children/' 
+                : `/api/folders/children/${folderPath}`;
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear loading indicator
+                    subtree.innerHTML = '';
+                    subtree.classList.remove('not-loaded');
+                    
+                    // No children case
+                    if (data.children.length === 0) {
+                        subtree.innerHTML = '<li class="empty-item">No subfolders</li>';
+                        return;
+                    }
+                    
+                    // Add children to the subtree
+                    data.children.forEach(child => {
+                        const childItem = document.createElement('li');
+                        childItem.className = `tree-item ${child.HasChildren ? 'has-children' : ''}`;
+                        childItem.setAttribute('data-path', child.Path);
+                        childItem.setAttribute('data-type', child.IsNote ? 'note' : 'folder');
+                        
+                        let html = '';
+                        if (child.HasChildren && !child.IsNote) {
+                            html += `<span class="expand-icon"><i class="fas fa-caret-right"></i></span>`;
+                        }
+                        
+                        const isActive = child.Path === "{{.CurrentPath}}";
+                        
+                        if (child.IsNote) {
+                            // Create note link - use view path for notes
+                            let noteTitle = child.Name;
+                            let folderPath = child.Path.substring(0, child.Path.lastIndexOf('/')); // Extract folder path from note path
+                            html += `<a href="/view/${noteTitle}?folder=${folderPath}" class="tree-link ${isActive ? 'active' : ''}">
+                                <i class="fas fa-file-alt"></i> ${child.Name}
+                            </a>`;
+                        } else {
+                            // Create folder link
+                            html += `<a href="/category/${child.Path}" class="tree-link ${isActive ? 'active' : ''}">
+                                <i class="fas fa-folder${isActive ? '-open' : ''}"></i> ${child.Name}
+                            </a>`;
+                            
+                            if (child.HasChildren) {
+                                html += `<ul class="subtree not-loaded"></ul>`;
+                            }
+                        }
+                        
+                        childItem.innerHTML = html;
+                        subtree.appendChild(childItem);
+                        
+                        // Add event listener to new expand icon
+                        const expandIcon = childItem.querySelector('.expand-icon');
+                        if (expandIcon) {
+                            expandIcon.addEventListener('click', handleExpandCollapse);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading folder children:', error);
+                    subtree.innerHTML = '<li class="error-item">Error loading folders</li>';
+                });
         }
 
         function confirmDelete(title) {
@@ -323,6 +420,137 @@
                 document.querySelector('.theme-toggle i').className = 'fas fa-sun';
             }
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Code for creating subcategories
+            const newSubcategoryBtn = document.getElementById('newSubcategoryBtn');
+            const subcategoryModal = document.getElementById('subcategoryModal');
+            const closeBtn = document.querySelector('.close-btn');
+            const saveBtn = document.getElementById('saveSubcategory');
+            const subcategoryInput = document.getElementById('subcategoryName');
+            const refreshButton = document.getElementById('refreshButton');
+            
+            refreshButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Show loading state
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+                this.disabled = true;
+                this.style.opacity = '0.7';
+                this.style.cursor = 'not-allowed';
+                
+                // Redirect to refresh URL
+                window.location.href = this.getAttribute('href');
+            });
+            
+            // Open modal on button click
+            // ... existing code ...
+        });
+
+        // Function to expand path to current folder
+        function expandPathToCurrentFolder(currentPath) {
+            if (!currentPath) return;
+            console.log("Expanding path to current folder:", currentPath);
+            
+            // Build all parent paths that need to be expanded
+            const parts = currentPath.split('/');
+            const parentPaths = [];
+            
+            let currentParentPath = '';
+            for (let i = 0; i < parts.length; i++) {
+                if (i > 0) currentParentPath += '/';
+                currentParentPath += parts[i];
+                parentPaths.push(currentParentPath);
+            }
+            
+            console.log("Parent paths to expand:", parentPaths);
+            
+            // First mark the current path as active
+            document.querySelectorAll('.tree-link.active').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Update current path as active
+            const currentItem = document.querySelector(`.tree-item[data-path="${currentPath}"]`);
+            if (currentItem) {
+                const currentLink = currentItem.querySelector('.tree-link');
+                if (currentLink) {
+                    currentLink.classList.add('active');
+                    // Update folder icon
+                    const icon = currentLink.querySelector('i.fa-folder');
+                    if (icon) icon.className = 'fas fa-folder-open';
+                }
+            }
+            
+            // Process parents from root to current path (important for proper loading sequence)
+            for (let i = 0; i < parentPaths.length; i++) {
+                const path = parentPaths[i];
+                console.log("Processing path:", path);
+                
+                // Skip the current path - we only want to expand parents
+                if (i === parentPaths.length - 1 && path === currentPath) {
+                    console.log("Skipping current path:", path);
+                    continue;
+                }
+                
+                // Find the parent item
+                const item = document.querySelector(`.tree-item[data-path="${path}"]`);
+                if (!item) {
+                    console.log("Item not found:", path);
+                    continue;
+                }
+                
+                console.log("Found item:", path, "Has children:", item.classList.contains('has-children'));
+                
+                // Only process items with children that need expansion
+                if (item.classList.contains('has-children') && !item.classList.contains('expanded')) {
+                    console.log("Expanding:", path);
+                    
+                    // Mark as expanded
+                    item.classList.add('expanded');
+                    
+                    // Find the subtree
+                    const subtree = item.querySelector('.subtree');
+                    if (!subtree) {
+                        console.log("No subtree found for:", path);
+                        continue;
+                    }
+                    
+                    // Load children if needed
+                    if (subtree.classList.contains('not-loaded')) {
+                        console.log("Loading children for:", path);
+                        loadFolderChildren(path, subtree);
+                    }
+                    
+                    // Show the subtree
+                    subtree.style.display = 'block';
+                    
+                    // Rotate the expand icon
+                    const expandIcon = item.querySelector('.expand-icon i');
+                    if (expandIcon) {
+                        expandIcon.style.transform = 'rotate(90deg)';
+                    }
+                    
+                    // If this path is just loaded, we need to delay processing its children
+                    if (subtree.classList.contains('not-loaded')) {
+                        console.log("Will need to reprocess after loading:", path);
+                    }
+                }
+            }
+            
+            // Re-run this function after a short delay to ensure all dynamically loaded content is expanded
+            setTimeout(function() {
+                const allExpanded = parentPaths.every(path => {
+                    const item = document.querySelector(`.tree-item[data-path="${path}"]`);
+                    return !item || !item.classList.contains('has-children') || item.classList.contains('expanded');
+                });
+                
+                if (!allExpanded) {
+                    console.log("Some items are not expanded yet, trying again");
+                    expandPathToCurrentFolder(currentPath);
+                }
+            }, 500);
+        }
     </script>
 </body>
 </html> 

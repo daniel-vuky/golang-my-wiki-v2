@@ -35,6 +35,7 @@
             <div class="content-body">
                 <form id="pageForm" action="/save" method="POST">
                     <input type="hidden" name="original_title" value="{{.Title}}">
+                    <input type="hidden" name="folder_path" value="{{.FolderPath}}">
                     <div class="form-group">
                         <label for="title">Page Title</label>
                         <input type="text" id="title" name="title" required placeholder="Enter page title" class="form-control" value="{{.Title}}">

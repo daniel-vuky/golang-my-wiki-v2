@@ -245,6 +245,29 @@ func (c *RedisCache) InvalidateCache() error {
 	// Clear the folders cache
 	c.client.Del(c.ctx, foldersCacheKey)
 
+	// Clear folder pages cache - we need to find and delete all keys with pattern "folder_pages:*"
+	pattern := "folder_pages:*"
+	var cursor uint64
+	for {
+		keys, nextCursor, err := c.client.Scan(c.ctx, cursor, pattern, 100).Result()
+		if err != nil {
+			return fmt.Errorf("failed to scan for folder pages keys: %v", err)
+		}
+
+		if len(keys) > 0 {
+			if err := c.client.Del(c.ctx, keys...).Err(); err != nil {
+				log.Printf("Error deleting folder pages keys: %v", err)
+			} else {
+				log.Printf("Deleted %d folder pages cache entries", len(keys))
+			}
+		}
+
+		if nextCursor == 0 {
+			break
+		}
+		cursor = nextCursor
+	}
+
 	log.Println("Invalidated cache for page lists and folder lists")
 	return nil
 }

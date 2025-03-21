@@ -36,6 +36,9 @@ type Config struct {
 		Enabled           bool   `mapstructure:"enabled"`
 		ExpirationSeconds int    `mapstructure:"expiration_seconds"`
 	} `mapstructure:"redis"`
+	Wiki struct {
+		MaxCategoryLevel int `mapstructure:"max_category_level"`
+	} `mapstructure:"wiki"`
 	StorageMode string `mapstructure:"storage_mode"`
 }
 
@@ -74,6 +77,11 @@ func LoadConfig() error {
 		AppConfig.Redis.ExpirationSeconds = 900 // 15 minutes default
 	}
 
+	// Set default Wiki values if not specified
+	if AppConfig.Wiki.MaxCategoryLevel == 0 {
+		AppConfig.Wiki.MaxCategoryLevel = 4 // Default to 4 levels
+	}
+
 	return nil
 }
 
@@ -90,4 +98,9 @@ func GetServerPort() string {
 // GetServerHost returns the server host
 func GetServerHost() string {
 	return AppConfig.Server.Host
+}
+
+// GetMaxCategoryLevel returns the maximum allowed category nesting level
+func GetMaxCategoryLevel() int {
+	return AppConfig.Wiki.MaxCategoryLevel
 }

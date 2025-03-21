@@ -76,7 +76,8 @@ func main() {
 
 	// Category routes
 	router.POST("/category/create", handlers.CategoryCreateHandler)
-	router.GET("/category/:path", handlers.CategoryHandler)
+	router.GET("/category/*path", handlers.CategoryHandler)
+	router.GET("/api/folders/children/*path", handlers.GetFolderChildrenHandler)
 
 	// Auth routes
 	router.GET("/login", handlers.LoginHandler)
