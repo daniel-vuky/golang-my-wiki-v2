@@ -26,8 +26,18 @@ type Storage interface {
 func NewStorage(config *config.Config) (types.Storage, error) {
 	switch config.StorageMode {
 	case "github":
+		// If Redis cache is enabled, use cached GitHub storage
+		if config.Redis.Enabled {
+			return NewCachedGitHubStorage(config)
+		}
+		// Otherwise use regular GitHub storage
 		return NewGitHubStorage(config)
 	case "local":
+		// If Redis cache is enabled, use cached local storage
+		if config.Redis.Enabled {
+			return NewCachedLocalStorage(config)
+		}
+		// Otherwise use regular local storage
 		return NewLocalStorage(config)
 	default:
 		return nil, fmt.Errorf("unsupported storage mode: %s", config.StorageMode)
