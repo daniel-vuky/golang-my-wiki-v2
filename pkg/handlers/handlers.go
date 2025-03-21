@@ -1,199 +1,227 @@
 package handlers
 
 import (
-	"html/template"
-	"io/ioutil"
+	"fmt"
+	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/models"
+	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage/types"
 	"github.com/gin-gonic/gin"
-	"github.com/russross/blackfriday/v2"
 )
 
-const dataDir = "data"
+var store types.Storage
 
-// LoadTemplates creates a multitemplate renderer for Gin
-func LoadTemplates(router *gin.Engine) {
-	// Create a function map for the templates
-	funcMap := template.FuncMap{
-		"add": func(a, b int) int {
-			return a + b
-		},
-	}
-
-	// Set the HTML renderer with custom delimiters and functions
-	router.SetFuncMap(funcMap)
-	router.Delims("{{", "}}")
-	router.LoadHTMLGlob("templates/*.html")
+// InitHandlers initializes the handlers with the storage instance
+func InitHandlers(s types.Storage) {
+	store = s
 }
 
-// HomeHandler displays the wiki home page
+// HomeHandler handles the home page
 func HomeHandler(c *gin.Context) {
-	pages, err := models.GetAllPages()
+	log.Println("=== HomeHandler START ===")
+
+	pages, err := models.GetAllPages(store)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Error loading pages")
+		log.Printf("Error getting pages: %v", err)
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": fmt.Sprintf("Failed to get pages: %v", err),
+		})
 		return
 	}
 
+	log.Printf("Found %d pages", len(pages))
+	for _, page := range pages {
+		log.Printf("Page: %s", page.Title)
+	}
+
 	user := c.MustGet("user")
-	sideMenu := models.GetMenuItems("")
+	log.Printf("User: %+v", user)
 
 	c.HTML(http.StatusOK, "home.html", gin.H{
 		"Pages":    pages,
 		"User":     user,
-		"SideMenu": sideMenu,
+		"SideMenu": models.GetMenuItems("", store),
 	})
+
+	log.Println("=== HomeHandler END ===")
 }
 
-// ViewHandler displays a wiki page
+// ViewHandler handles viewing a page
 func ViewHandler(c *gin.Context) {
 	title := c.Param("title")
-	if title == "" {
-		c.Redirect(http.StatusFound, "/")
-		return
-	}
+	log.Printf("=== ViewHandler START: %s ===", title)
 
-	filename := filepath.Join(dataDir, title+".txt")
-	body, err := ioutil.ReadFile(filename)
+	page, err := store.GetPage(title)
 	if err != nil {
-		if os.IsNotExist(err) {
-			c.Redirect(http.StatusFound, "/edit/"+title)
-			return
-		}
-		c.String(http.StatusInternalServerError, "Error reading page")
+		log.Printf("Error getting page: %v", err)
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"error": "Page not found",
+		})
 		return
 	}
 
-	// Convert markdown to HTML
-	html := blackfriday.Run(body)
-
-	user := c.MustGet("user")
-	sideMenu := models.GetMenuItems(title)
+	log.Printf("Page title: %s", page.Title)
+	log.Printf("Page content length: %d", len(page.Content))
+	log.Printf("Page content preview: %s", page.Content[:min(100, len(page.Content))])
 
 	c.HTML(http.StatusOK, "view.html", gin.H{
-		"Title":    title,
-		"Content":  template.HTML(string(html)),
-		"User":     user,
-		"SideMenu": sideMenu,
+		"Title":    page.Title,
+		"Content":  page.Content,
+		"SideMenu": models.GetMenuItems(title, store),
+		"User":     c.MustGet("user"),
 	})
+	log.Printf("=== ViewHandler END: %s ===", title)
 }
 
-// EditHandler displays the edit form for a wiki page
+// EditHandler handles editing a page
 func EditHandler(c *gin.Context) {
 	title := c.Param("title")
-	isNewPage := title == "NewPage"
+	log.Printf("=== EditHandler START: %s ===", title)
 
-	var body []byte
-	var err error
-
-	if !isNewPage {
-		filename := filepath.Join(dataDir, title+".txt")
-		body, err = ioutil.ReadFile(filename)
-		if err != nil && !os.IsNotExist(err) {
-			c.String(http.StatusInternalServerError, "Error reading page")
-			return
-		}
+	// Handle new page creation
+	if title == "" || title == "new" {
+		log.Printf("Creating new page form")
+		c.HTML(http.StatusOK, "edit.html", gin.H{
+			"Title":     "",
+			"Content":   "",
+			"IsNewPage": true,
+			"SideMenu":  models.GetMenuItems("", store),
+			"User":      c.MustGet("user"),
+		})
+		log.Printf("=== EditHandler END (new page) ===")
+		return
 	}
 
-	user := c.MustGet("user")
-	sideMenu := models.GetMenuItems(title)
+	// Editing an existing page - GetPage will handle adding .txt
+	log.Printf("Attempting to edit page: %s", title)
+	page, err := store.GetPage(title)
+	if err != nil {
+		log.Printf("Error getting page: %v", err)
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"error": fmt.Sprintf("Page not found: %v", err),
+		})
+		log.Printf("=== EditHandler END (error) ===")
+		return
+	}
 
+	log.Printf("Found page, title: %s, content length: %d", page.Title, len(page.Content))
 	c.HTML(http.StatusOK, "edit.html", gin.H{
-		"Title":     title,
-		"Body":      string(body),
-		"User":      user,
-		"SideMenu":  sideMenu,
-		"IsNewPage": isNewPage,
+		"Title":     page.Title,
+		"Content":   page.Content,
+		"IsNewPage": false,
+		"SideMenu":  models.GetMenuItems(page.Title, store),
+		"User":      c.MustGet("user"),
 	})
+	log.Printf("=== EditHandler END (success) ===")
 }
 
-// SaveHandler saves a wiki page
+// SaveHandler handles saving a page
 func SaveHandler(c *gin.Context) {
-	var oldTitle string
-	var newTitle string
+	log.Println("=== SaveHandler START ===")
 
-	if c.Param("title") == "new" {
-		// For new pages, get title from form
-		newTitle = c.PostForm("title")
-		if newTitle == "" {
-			c.String(http.StatusBadRequest, "Title is required")
+	title := c.PostForm("title")
+	log.Printf("Title from form: %s", title)
+
+	content := c.PostForm("content")
+	log.Printf("Content from form: %s", content)
+
+	// Get the original title (before edit)
+	originalTitle := c.PostForm("original_title")
+	log.Printf("Original title: %s", originalTitle)
+
+	if title == "" || content == "" {
+		log.Println("Error: Title or content is empty")
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"error": "Title and content are required",
+		})
+		return
+	}
+
+	// Create a page object with the new title
+	page := &types.Page{
+		Title:   title,
+		Path:    title + ".txt",
+		Content: content,
+		Body:    []byte(content),
+	}
+
+	// If we're editing an existing page and the title has changed
+	if originalTitle != "" && originalTitle != title {
+		log.Printf("Title changed from %s to %s, creating new file and deleting old one", originalTitle, title)
+
+		// Create new file with new title
+		if err := store.CreatePage(page); err != nil {
+			log.Printf("Error creating new page: %v", err)
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"error": fmt.Sprintf("Failed to create new page: %v", err),
+			})
 			return
+		}
+		log.Printf("Successfully created new page: %s", title)
+
+		// Delete old file with old title
+		if err := store.DeletePage(originalTitle); err != nil {
+			log.Printf("Warning: Failed to delete old page %s: %v", originalTitle, err)
+			// Continue even if delete fails
+		} else {
+			log.Printf("Successfully deleted old page: %s", originalTitle)
 		}
 	} else {
-		// For existing pages
-		oldTitle = c.Param("title")
-		newTitle = c.PostForm("title")
+		// Normal save without title change
+		// Check if the page exists
+		log.Printf("No title change detected, checking if page exists: %s", title)
+		existingPage, err := store.GetPage(title)
 
-		if newTitle == "" {
-			c.String(http.StatusBadRequest, "Title is required")
-			return
-		}
+		if err != nil {
+			// Page doesn't exist, create it
+			log.Printf("Page %s does not exist, creating new page", title)
 
-		// If title hasn't changed, just update the content
-		if oldTitle == newTitle {
-			body := c.PostForm("body")
-			filename := filepath.Join(dataDir, oldTitle+".txt")
-			err := ioutil.WriteFile(filename, []byte(body), 0644)
-			if err != nil {
-				c.String(http.StatusInternalServerError, "Error saving page")
+			if err := store.CreatePage(page); err != nil {
+				log.Printf("Error creating page: %v", err)
+				c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+					"error": fmt.Sprintf("Failed to create page: %v", err),
+				})
 				return
 			}
-			c.Redirect(http.StatusFound, "/view/"+oldTitle)
-			return
+			log.Printf("Successfully created new page: %s", title)
+		} else {
+			// Page exists, update it
+			log.Printf("Page %s exists, updating content", title)
+			page.LastModified = existingPage.LastModified
+
+			if err := store.UpdatePage(page); err != nil {
+				log.Printf("Error updating page: %v", err)
+				c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+					"error": fmt.Sprintf("Failed to update page: %v", err),
+				})
+				return
+			}
+			log.Printf("Successfully updated page: %s", title)
 		}
 	}
 
-	// Check if the new title already exists (except for the current file)
-	if oldTitle != newTitle {
-		if _, err := os.Stat(filepath.Join(dataDir, newTitle+".txt")); err == nil {
-			c.String(http.StatusBadRequest, "A page with this title already exists")
-			return
-		}
-	}
-
-	// Save the content with the new title
-	body := c.PostForm("body")
-	newFilename := filepath.Join(dataDir, newTitle+".txt")
-	err := ioutil.WriteFile(newFilename, []byte(body), 0644)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Error saving page")
-		return
-	}
-
-	// If this was a rename, delete the old file
-	if oldTitle != "" && oldTitle != newTitle {
-		oldFilename := filepath.Join(dataDir, oldTitle+".txt")
-		err = os.Remove(oldFilename)
-		if err != nil && !os.IsNotExist(err) {
-			// Log the error but don't fail the request
-			// The new file was saved successfully
-			gin.DefaultErrorWriter.Write([]byte("Error deleting old file: " + err.Error() + "\n"))
-		}
-	}
-
-	c.Redirect(http.StatusFound, "/view/"+newTitle)
+	log.Println("=== SaveHandler END ===")
+	c.Redirect(http.StatusFound, "/view/"+title)
 }
 
-// DeleteHandler deletes a wiki page
+// DeleteHandler handles deleting a page
 func DeleteHandler(c *gin.Context) {
 	title := c.Param("title")
-	if title == "" {
-		c.String(http.StatusBadRequest, "No title provided")
+	log.Printf("=== DeleteHandler START: %s ===", title)
+
+	// No need to add .txt here, the storage will handle it
+	log.Printf("Attempting to delete page: %s", title)
+
+	if err := store.DeletePage(title); err != nil {
+		log.Printf("Error deleting page: %v", err)
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": fmt.Sprintf("Failed to delete page: %v", err),
+		})
 		return
 	}
 
-	filename := filepath.Join(dataDir, title+".txt")
-	err := os.Remove(filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			c.String(http.StatusNotFound, "Page not found")
-			return
-		}
-		c.String(http.StatusInternalServerError, "Error deleting page")
-		return
-	}
-
+	log.Printf("Successfully deleted page: %s", title)
+	log.Printf("=== DeleteHandler END: %s ===", title)
 	c.Redirect(http.StatusFound, "/")
 }

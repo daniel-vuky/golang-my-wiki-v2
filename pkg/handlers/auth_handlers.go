@@ -4,9 +4,17 @@ import (
 	"net/http"
 
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/auth"
+	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
+
+var authHandler *auth.Handler
+
+// InitAuthHandlers initializes the auth handlers with configuration
+func InitAuthHandlers(cfg *config.Config) {
+	authHandler = auth.NewHandler(cfg)
+}
 
 func LoginHandler(c *gin.Context) {
 	session := sessions.Default(c)
@@ -22,11 +30,11 @@ func LoginHandler(c *gin.Context) {
 }
 
 func GoogleLoginHandler(c *gin.Context) {
-	auth.NewHandler().Login(c)
+	authHandler.Login(c)
 }
 
 func GoogleCallbackHandler(c *gin.Context) {
-	auth.NewHandler().Callback(c)
+	authHandler.Callback(c)
 }
 
 func LogoutHandler(c *gin.Context) {

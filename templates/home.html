@@ -7,6 +7,68 @@
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/pages/home.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .wiki-list-item {
+            position: relative;
+            transition: background-color 0.2s ease;
+            padding-right: 160px; /* Space for buttons */
+        }
+        
+        .wiki-list-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .action-buttons {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: none;
+            gap: 8px;
+        }
+        
+        .wiki-list-item:hover .action-buttons {
+            display: flex;
+        }
+        
+        .edit-link, .delete-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .wiki-list-item:hover .edit-link {
+            background-color: #6ea8fe;
+        }
+        
+        .wiki-list-item:hover .edit-link:hover {
+            background-color: #0d6efd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .wiki-list-item:hover .delete-link {
+            background-color: #f87979;
+        }
+        
+        .wiki-list-item:hover .delete-link:hover {
+            background-color: #F44336;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .edit-link i, .delete-link i {
+            margin-right: 4px;
+        }
+    </style>
 </head>
 <body>
     <div class="wiki-container">
@@ -18,7 +80,7 @@
                         <a href="/logout" class="logout-btn">Logout</a>
                     </div>
                     <div class="header-actions">
-                        <a href="/edit/NewPage" class="add-note-btn">
+                        <a href="/new" class="add-note-btn">
                             <i class="fas fa-plus"></i> New Note
                         </a>
                     </div>
@@ -32,9 +94,14 @@
                                 {{$page.Title}}
                             </span>
                         </a>
-                        <a href="/edit/{{$page.Title}}" class="edit-link">
-                            <i class="fas fa-edit"></i> Edit
-                        </a>
+                        <div class="action-buttons">
+                            <a href="/edit/{{$page.Title}}" class="edit-link">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="#" onclick="confirmDelete('{{$page.Title}}')" class="delete-link">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
                     </div>
                     {{end}}
                 </div>
@@ -45,5 +112,28 @@
         <i class="fas fa-moon"></i>
     </button>
     <script src="/static/js/theme.js"></script>
+    <script>
+        function confirmDelete(title) {
+            if (confirm('Are you sure you want to delete "' + title + '"?')) {
+                fetch('/delete/' + title, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        alert('Error deleting page. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting page. Please try again.');
+                });
+            }
+        }
+    </script>
 </body>
 </html> 

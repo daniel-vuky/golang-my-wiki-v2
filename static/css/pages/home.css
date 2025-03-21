@@ -118,7 +118,7 @@
 }
 
 .wiki-list-item .edit-link {
-    color: var(--accent-color);
+    color: #ffffff;
     text-decoration: none;
     font-size: 0.9rem;
     padding: 1rem;
@@ -131,6 +131,22 @@
 
 .wiki-list-item .edit-link:hover {
     background: rgba(3, 102, 214, 0.2);
+}
+
+.wiki-list-item .delete-link {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 1rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    z-index: 2;
+}
+
+.wiki-list-item .delete-link:hover {
+    background: rgba(220, 53, 69, 0.2);
 }
 
 /* Dark theme support */
@@ -156,7 +172,11 @@ body.dark-theme .wiki-list-item a.title-link {
 }
 
 body.dark-theme .wiki-list-item .edit-link {
-    color: #63b3ed;
+    color: #ffffff;
+}
+
+body.dark-theme .wiki-list-item .delete-link {
+    color: #ffffff;
 }
 
 /* Responsive styles */

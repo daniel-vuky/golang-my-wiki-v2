@@ -4,51 +4,128 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - Daniel's Wiki</title>
+    <!-- Base styles -->
     <link rel="stylesheet" href="/static/css/base.css">
+    <!-- Component styles -->
     <link rel="stylesheet" href="/static/css/components/sidebar.css">
+    <!-- Page specific styles -->
     <link rel="stylesheet" href="/static/css/pages/view.css">
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .button.secondary.delete-btn {
+            background-color: #F44336;
+            color: white;
+        }
+        
+        .button.secondary.delete-btn:hover {
+            background-color: #D32F2F;
+        }
+    </style>
 </head>
 <body class="logged-in">
     <div class="wiki-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <a href="/" class="wiki-title">Daniel's Wiki</a>
-            </div>
-            <div class="user-info">
-                <span>Welcome, {{ .User.Name }}</span>
-                <a href="/logout" class="logout-btn">Logout</a>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    {{range .SideMenu}}
-                    <li {{if .Active}}class="active"{{end}}>
-                        <a href="{{.URL}}">{{.Title}}</a>
-                    </li>
-                    {{end}}
-                </ul>
-            </nav>
-            <div class="sidebar-footer">
-                <p>&copy; 2024 Daniel's Wiki</p>
-            </div>
-        </aside>
+        {{template "sidebar" .}}
         <main class="content">
             <header class="content-header">
                 <h2>{{.Title}}</h2>
                 <div class="content-actions">
+                    <a href="#" onclick="confirmDelete()" class="button secondary delete-btn">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
                     <a href="/edit/{{.Title}}" class="button">
                         <i class="fas fa-edit"></i> Edit
                     </a>
                 </div>
             </header>
             <div class="content-body">
-                {{.Content}}
+                {{html .Content}}
             </div>
         </main>
     </div>
     <button class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon"></i>
     </button>
+    
+    <div id="loader" class="loader-overlay">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Deleting note...</div>
+    </div>
+    
     <script src="/static/js/theme.js"></script>
+    <script>
+        // Add loader styles directly in the page to ensure they're applied
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                .loader-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.7);
+                    display: none;
+                    justify-content: center;
+                    align-items: center;
+                    flex-direction: column;
+                    z-index: 10000;
+                }
+                
+                .loader-spinner {
+                    width: 60px;
+                    height: 60px;
+                    border: 6px solid #f3f3f3;
+                    border-top: 6px solid var(--accent-color, #0d6efd);
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin-bottom: 20px;
+                }
+                
+                .loader-text {
+                    color: white;
+                    font-size: 20px;
+                    font-weight: 600;
+                }
+                
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        `);
+
+        function confirmDelete() {
+            if (confirm('Are you sure you want to delete this page? This action cannot be undone.')) {
+                // Show loader immediately and ensure it's visible
+                const loader = document.getElementById('loader');
+                loader.style.display = 'flex';
+                
+                // Small delay to ensure the loader is displayed before the fetch operation begins
+                setTimeout(() => {
+                    fetch('/delete/{{.Title}}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = '/';
+                        } else {
+                            // Hide loader on error
+                            loader.style.display = 'none';
+                            alert('Error deleting page. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        // Hide loader on error
+                        loader.style.display = 'none';
+                        console.error('Error:', error);
+                        alert('Error deleting page. Please try again.');
+                    });
+                }, 100); // Small delay to ensure UI updates before fetch starts
+            }
+        }
+    </script>
 </body>
 </html> 

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Daniel's Wiki</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/pages/error.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="wiki-container">
+        <main class="content">
+            <div class="error-container">
+                <div class="error-content">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h1>Error</h1>
+                    <p>{{ .error }}</p>
+                    <a href="/" class="back-home">Back to Home</a>
+                </div>
+            </div>
+        </main>
+    </div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+    <script src="/static/js/theme.js"></script>
+</body>
+</html> 
