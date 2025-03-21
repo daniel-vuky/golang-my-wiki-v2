@@ -90,17 +90,32 @@
     border-left: 3px solid transparent;
 }
 
+/* Make active item styling more specific and visible */
 .sidebar-nav li.active a {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+    border-radius: 4px;
+    position: relative;
+    font-weight: 500;
+}
+
+/* Add a subtle indicator to active items */
+.sidebar-nav li.active a::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
     background-color: var(--accent-color);
-    border-left-color: var(--accent-color);
-    color: white;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
 }
 
 .sidebar-nav a:hover {
-    background-color: rgba(3, 102, 214, 0.1);
-    border-left-color: var(--accent-color);
+    background-color: var(--bg-hover);
     color: var(--accent-color);
-    transform: translateX(4px);
+    border-radius: 4px;
 }
 
 .sidebar-footer {
@@ -120,8 +135,28 @@ body.dark-theme .sidebar-footer {
     background-color: var(--bg-secondary);
 }
 
+body.dark-theme .logout-btn:hover {
+    background: var(--bg-primary);
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Dark theme active state */
+body.dark-theme .sidebar-nav li.active a {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+body.dark-theme .sidebar-nav li.active a::before {
+    background-color: var(--accent-color);
+}
+
 body.dark-theme .sidebar-nav a:hover {
-    background-color: rgba(88, 166, 255, 0.1);
+    background-color: var(--bg-hover);
+    color: var(--accent-color);
+    border-radius: 4px;
 }
 
 /* Responsive styles */

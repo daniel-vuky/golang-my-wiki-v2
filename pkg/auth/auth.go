@@ -15,14 +15,16 @@ import (
 
 type Handler struct {
 	oauthConfig *oauth2.Config
+	cfg         *config.Config
 }
 
-func NewHandler() *Handler {
+func NewHandler(cfg *config.Config) *Handler {
 	return &Handler{
+		cfg: cfg,
 		oauthConfig: &oauth2.Config{
-			ClientID:     config.GetGoogleClientID(),
-			ClientSecret: config.GetGoogleClientSecret(),
-			RedirectURL:  config.GetGoogleRedirectURL(),
+			ClientID:     cfg.Google.ClientID,
+			ClientSecret: cfg.Google.ClientSecret,
+			RedirectURL:  cfg.Google.RedirectURL,
 			Scopes: []string{
 				"https://www.googleapis.com/auth/userinfo.email",
 				"https://www.googleapis.com/auth/userinfo.profile",
@@ -32,9 +34,9 @@ func NewHandler() *Handler {
 	}
 }
 
-func InitGoogleOAuth() {
+func InitGoogleOAuth(cfg *config.Config) {
 	// Initialize the OAuth config
-	_ = NewHandler()
+	_ = NewHandler(cfg)
 }
 
 // GenerateRandomState generates a random state string for OAuth
@@ -116,12 +118,14 @@ func (h *Handler) Callback(c *gin.Context) {
 	}
 
 	// Check if email is allowed
-	allowedEmails := config.GetAllowedEmails()
-	isAllowed := false
-	for _, email := range allowedEmails {
-		if email == userInfo.Email {
-			isAllowed = true
-			break
+	allowedEmails := h.cfg.Session.AllowedEmails
+	isAllowed := len(allowedEmails) == 0 // If no emails are specified, allow all
+	if !isAllowed {
+		for _, email := range allowedEmails {
+			if email == userInfo.Email {
+				isAllowed = true
+				break
+			}
 		}
 	}
 
