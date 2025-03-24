@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage/types"
@@ -115,21 +116,38 @@ func (g *GitHubStorage) ListPages() ([]types.Page, error) {
 	return pages, nil
 }
 
-// GetPage retrieves a specific page from GitHub
+// GetPage retrieves a page from GitHub
 func (g *GitHubStorage) GetPage(path string) (*types.Page, error) {
 	log.Printf("=== GetPage START: %s ===", path)
-	log.Printf("Repository: %s, Branch: %s", g.repository, g.branch)
 
-	// Ensure path ends with .txt
+	// If path doesn't end with .txt, add it
 	if !strings.HasSuffix(path, ".txt") {
-		path = path + ".txt"
+		// Check if this is a path with directories
+		if strings.Contains(path, "/") {
+			// Split the path to get the filename
+			parts := strings.Split(path, "/")
+			filename := parts[len(parts)-1]
+
+			// If the filename doesn't have .txt, add it
+			if !strings.HasSuffix(filename, ".txt") {
+				parts[len(parts)-1] = filename + ".txt"
+				path = strings.Join(parts, "/")
+			}
+		} else {
+			// Simple filename without directories
+			path = path + ".txt"
+		}
+		log.Printf("Fixed path to include .txt extension: %s", path)
 	}
-	log.Printf("Final path: %s", path)
 
 	// Get the file content
-	content, _, _, err := g.client.Repositories.GetContents(g.ctx, g.owner, g.repository, path, &github.RepositoryContentGetOptions{
-		Ref: g.branch,
-	})
+	fileContent, _, _, err := g.client.Repositories.GetContents(
+		g.ctx,
+		g.owner,
+		g.repository,
+		path,
+		&github.RepositoryContentGetOptions{Ref: g.branch},
+	)
 	if err != nil {
 		log.Printf("Error getting content: %v", err)
 		return nil, fmt.Errorf("failed to get content: %v", err)
@@ -140,7 +158,7 @@ func (g *GitHubStorage) GetPage(path string) (*types.Page, error) {
 	log.Printf("File name without extension: %s", fileName)
 
 	// Get the content string directly
-	contentStr, err := content.GetContent()
+	contentStr, err := fileContent.GetContent()
 	if err != nil {
 		log.Printf("Error getting content string: %v", err)
 		return nil, fmt.Errorf("failed to get content string: %v", err)
@@ -296,14 +314,28 @@ func (g *GitHubStorage) UpdatePage(page *types.Page) error {
 func (g *GitHubStorage) DeletePage(path string) error {
 	log.Printf("=== DeletePage START: %s ===", path)
 
-	// Make sure we have a valid path ending with .txt
+	// If path doesn't end with .txt, add it
 	if !strings.HasSuffix(path, ".txt") {
-		path = path + ".txt"
-	}
-	log.Printf("Using path: %s", path)
+		// Check if this is a path with directories
+		if strings.Contains(path, "/") {
+			// Split the path to get the filename
+			parts := strings.Split(path, "/")
+			filename := parts[len(parts)-1]
 
-	// Get the current file to get its SHA
-	content, _, resp, err := g.client.Repositories.GetContents(
+			// If the filename doesn't have .txt, add it
+			if !strings.HasSuffix(filename, ".txt") {
+				parts[len(parts)-1] = filename + ".txt"
+				path = strings.Join(parts, "/")
+			}
+		} else {
+			// Simple filename without directories
+			path = path + ".txt"
+		}
+		log.Printf("Fixed path to include .txt extension: %s", path)
+	}
+
+	// Get the file content first to get its SHA
+	fileContent, _, resp, err := g.client.Repositories.GetContents(
 		g.ctx,
 		g.owner,
 		g.repository,
@@ -320,7 +352,7 @@ func (g *GitHubStorage) DeletePage(path string) error {
 		return fmt.Errorf("failed to get file: %v", err)
 	}
 
-	if content == nil {
+	if fileContent == nil {
 		log.Printf("File content is nil, nothing to delete")
 		return fmt.Errorf("file not found: %s", path)
 	}
@@ -328,7 +360,7 @@ func (g *GitHubStorage) DeletePage(path string) error {
 	// File exists, delete it
 	opts := &github.RepositoryContentFileOptions{
 		Message: github.String(fmt.Sprintf("Delete page: %s", path)),
-		SHA:     content.SHA,
+		SHA:     fileContent.SHA,
 		Branch:  github.String(g.branch),
 	}
 
@@ -355,43 +387,83 @@ func (g *GitHubStorage) DeletePage(path string) error {
 
 // ListFolders retrieves all folders from the GitHub repository
 func (g *GitHubStorage) ListFolders() ([]string, error) {
-	ctx := context.Background()
+	log.Printf("=== ListFolders START ===")
+
+	// Get root folders first
+	var allFolders []string
+
+	// Call recursive helper to get all folders
+	if err := g.getAllFolders("", &allFolders); err != nil {
+		return nil, err
+	}
+
+	log.Printf("Found total of %d folders", len(allFolders))
+	for _, folder := range allFolders {
+		log.Printf("Folder: %s", folder)
+	}
+
+	log.Printf("=== ListFolders END ===")
+	return allFolders, nil
+}
+
+// getAllFolders recursively gets all folders
+func (g *GitHubStorage) getAllFolders(path string, allFolders *[]string) error {
 	opts := &github.RepositoryContentGetOptions{
 		Ref: g.branch,
 	}
 
-	_, contents, _, err := g.client.Repositories.GetContents(ctx, g.owner, g.repository, "", opts)
+	_, contents, _, err := g.client.Repositories.GetContents(g.ctx, g.owner, g.repository, path, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get repository contents: %v", err)
+		return fmt.Errorf("failed to get repository contents: %v", err)
 	}
 
-	var folders []string
 	for _, content := range contents {
 		if content.GetType() == "dir" {
-			folders = append(folders, content.GetPath())
+			folderPath := content.GetPath()
+			log.Printf("Found folder: %s", folderPath)
+			*allFolders = append(*allFolders, folderPath)
+
+			// Recursively get subfolders
+			if err := g.getAllFolders(folderPath, allFolders); err != nil {
+				log.Printf("Warning: Error getting subfolders of %s: %v", folderPath, err)
+				// Continue even if there's an error with one subfolder
+			}
 		}
 	}
 
-	return folders, nil
+	return nil
 }
 
 // CreateFolder creates a new folder in GitHub
 func (g *GitHubStorage) CreateFolder(path string) error {
+	log.Printf("=== CreateFolder START: %s ===", path)
 	ctx := context.Background()
 
-	// Create an empty .folder file to mark the directory
+	// Create a .folder file to mark the directory
 	folderPath := path + "/.folder"
+
+	// GitHub requires content to be non-empty and properly encoded
+	// This is a small text file with a message explaining its purpose
+	content := []byte("This file marks the folder for the wiki system. Please do not delete.")
+
 	opts := &github.RepositoryContentFileOptions{
 		Message: github.String(fmt.Sprintf("Create folder: %s", path)),
-		Content: []byte(""), // Empty file to mark directory
+		Content: content,
 		Branch:  &g.branch,
 	}
 
-	_, _, err := g.client.Repositories.CreateFile(ctx, g.owner, g.repository, folderPath, opts)
+	log.Printf("Creating folder marker file at: %s", folderPath)
+	_, resp, err := g.client.Repositories.CreateFile(ctx, g.owner, g.repository, folderPath, opts)
 	if err != nil {
+		log.Printf("Error creating folder: %v", err)
+		if resp != nil {
+			log.Printf("GitHub API response status: %s", resp.Status)
+		}
 		return fmt.Errorf("failed to create folder: %v", err)
 	}
 
+	log.Printf("Successfully created folder: %s", path)
+	log.Printf("=== CreateFolder END ===")
 	return nil
 }
 
@@ -413,4 +485,102 @@ func (g *GitHubStorage) DeleteFolder(path string) error {
 	}
 
 	return nil
+}
+
+// GetPagesInFolder retrieves pages from a specific folder
+func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
+	log.Printf("=== GetPagesInFolder START: %s ===", folderPath)
+
+	// Handle empty or root path
+	if folderPath == "" {
+		log.Printf("Empty folder path, returning empty result")
+		return []types.Page{}, nil
+	}
+
+	// Set up context and options
+	ctx, cancel := context.WithTimeout(g.ctx, time.Second*30)
+	defer cancel()
+
+	opts := &github.RepositoryContentGetOptions{
+		Ref: g.branch,
+	}
+
+	// Get contents of the folder
+	_, dirContents, resp, err := g.client.Repositories.GetContents(
+		ctx,
+		g.owner,
+		g.repository,
+		folderPath,
+		opts,
+	)
+
+	if err != nil {
+		log.Printf("Error getting contents of folder: %v", err)
+		if resp != nil && resp.StatusCode == 404 {
+			log.Printf("Folder not found (404): %s", folderPath)
+			return []types.Page{}, nil
+		}
+		return nil, fmt.Errorf("failed to get folder contents: %v", err)
+	}
+
+	log.Printf("Found %d items in folder: %s", len(dirContents), folderPath)
+
+	// Filter for .txt files and create Page objects
+	var pages []types.Page
+	for _, content := range dirContents {
+		if content == nil || content.Type == nil || content.Name == nil {
+			log.Printf("Skipping nil content item")
+			continue
+		}
+
+		// Check if this is a file and has a .txt extension (case insensitive)
+		fileName := *content.Name
+		if *content.Type == "file" && (strings.HasSuffix(strings.ToLower(fileName), ".txt")) {
+			log.Printf("Processing file: %s", fileName)
+
+			// Get the file content
+			fileContent, _, _, err := g.client.Repositories.GetContents(
+				ctx,
+				g.owner,
+				g.repository,
+				*content.Path,
+				opts,
+			)
+
+			if err != nil {
+				log.Printf("Error getting file content: %v, skipping", err)
+				continue
+			}
+
+			// Decode content
+			decodedContent, err := fileContent.GetContent()
+			if err != nil {
+				log.Printf("Error decoding content: %v, skipping", err)
+				continue
+			}
+
+			title := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+
+			// Add page to results
+			page := types.Page{
+				Title:   title,
+				Path:    *content.Path,
+				Content: decodedContent,
+				Body:    []byte(decodedContent),
+			}
+
+			// Add preview
+			if len(decodedContent) > 150 {
+				page.Preview = decodedContent[:150] + "..."
+			} else {
+				page.Preview = decodedContent
+			}
+
+			pages = append(pages, page)
+			log.Printf("Added page: %s", title)
+		}
+	}
+
+	log.Printf("=== GetPagesInFolder END: %s, found %d pages ===", folderPath, len(pages))
+	return pages, nil
 }

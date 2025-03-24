@@ -240,6 +240,17 @@ func (cg *CachedGitHubStorage) CreateFolder(path string) error {
 		log.Printf("Failed to invalidate cache: %v", err)
 	}
 
+	// Force refresh of folder list immediately to ensure subfolders are detected
+	folders, err := cg.github.ListFolders()
+	if err != nil {
+		log.Printf("Warning: Failed to refresh folder list after create: %v", err)
+	} else {
+		// Update cache with the new folder list
+		if err := cg.cache.SetFolderList(folders); err != nil {
+			log.Printf("Failed to cache updated folder list: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -256,4 +267,37 @@ func (cg *CachedGitHubStorage) DeleteFolder(path string) error {
 	}
 
 	return nil
+}
+
+// GetPagesInFolder retrieves all pages from a specific folder, using cache when available
+func (cg *CachedGitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
+	// Try to get from cache first
+	pages, found, err := cg.cache.GetFolderPages(folderPath)
+	if err != nil {
+		log.Printf("Cache error when getting pages in folder %s: %v", folderPath, err)
+	}
+
+	if found {
+		log.Printf("Using cached pages for folder %s: %d pages", folderPath, len(pages))
+		return pages, nil
+	}
+
+	// Cache miss, get from GitHub
+	log.Printf("Cache miss for folder %s pages, fetching from GitHub", folderPath)
+	pages, err = cg.github.GetPagesInFolder(folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache for next time
+	if err := cg.cache.SetFolderPages(folderPath, pages); err != nil {
+		log.Printf("Failed to cache pages for folder %s: %v", folderPath, err)
+	}
+
+	return pages, nil
+}
+
+// InvalidateCache invalidates all relevant caches
+func (cg *CachedGitHubStorage) InvalidateCache() error {
+	return cg.cache.InvalidateCache()
 }

@@ -18,6 +18,7 @@ type Storage interface {
 	CreatePage(page *Page) error
 	UpdatePage(page *Page) error
 	DeletePage(path string) error
+	GetPagesInFolder(folderPath string) ([]Page, error)
 
 	// Folder operations
 	ListFolders() ([]string, error)

@@ -1,0 +1,707 @@
+/* Folder View Page Styles */
+.content {
+    margin-left: 250px;
+    padding: 2rem;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.content-header h2 {
+    font-size: 1.8rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.content-header h2 i {
+    color: #f8d775;
+}
+
+.content-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.button.primary {
+    background: #28a745;
+    color: white;
+}
+
+.button.primary:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.button.primary.disabled, 
+.button.primary:disabled {
+    background: #8bc99f;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+}
+
+.button.secondary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.button.secondary:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.button.info {
+    background: #17a2b8;
+    color: white;
+}
+
+.button.info:hover {
+    background: #138496;
+    transform: translateY(-1px);
+}
+
+.button.info.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Content Body */
+.content-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Section Title */
+.section-title {
+    margin-bottom: 1rem;
+}
+
+.section-title h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Categories Grid */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.category-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+    box-shadow: var(--card-shadow);
+    position: relative;
+}
+
+.category-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-color);
+}
+
+.category-box.has-children::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+}
+
+.children-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 8px;
+    color: var(--accent-color);
+}
+
+.category-icon {
+    font-size: 2.5rem;
+    color: #f8d775;
+    margin-bottom: 0.75rem;
+}
+
+.category-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: center;
+    word-break: break-word;
+}
+
+/* Notes List */
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.note-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    box-shadow: var(--card-shadow);
+}
+
+.note-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-color);
+}
+
+.note-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.note-icon {
+    font-size: 1.5rem;
+    color: var(--accent-color);
+}
+
+.note-details {
+    flex: 1;
+}
+
+.note-title {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 0.25rem 0;
+    color: var(--text-primary);
+}
+
+.note-preview {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.note-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    color: white;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.edit-btn {
+    background-color: #6ea8fe;
+}
+
+.edit-btn:hover {
+    background-color: #0d6efd;
+    transform: translateY(-2px);
+}
+
+.delete-btn {
+    background-color: #f87979;
+}
+
+.delete-btn:hover {
+    background-color: #F44336;
+    transform: translateY(-2px);
+}
+
+/* Empty Sections */
+.empty-section {
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    color: var(--text-secondary);
+}
+
+/* Folder Tree */
+.folder-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tree-item {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+}
+
+.tree-item:not(:last-child) {
+    margin-bottom: 2px;
+}
+
+.tree-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+    text-decoration: none;
+    color: var(--text-primary);
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    width: calc(100% - 8px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-link:hover {
+    background-color: var(--bg-hover);
+    color: var(--accent-color);
+}
+
+.tree-link.active {
+    background-color: var(--bg-hover);
+    color: var(--accent-color);
+    font-weight: 500;
+    border-left: 3px solid var(--accent-color);
+}
+
+.tree-item .tree-link {
+    padding-left: 1.5rem;
+}
+
+.tree-item.has-children > .tree-link {
+    font-weight: 500;
+}
+
+.expand-icon {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: absolute;
+    left: 4px;
+    top: 1rem;
+    z-index: 5;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.expand-icon:hover {
+    color: var(--accent-color);
+}
+
+.expand-icon i {
+    transition: transform 0.2s ease;
+    font-size: 0.8rem;
+}
+
+.tree-item.expanded > .expand-icon i {
+    transform: rotate(90deg);
+}
+
+.subtree {
+    list-style: none;
+    margin-left: 0;
+    padding-left: 0;
+    display: none;
+    overflow: hidden;
+    transition: height 0.2s ease;
+    border-left: 1px solid var(--border-color);
+}
+
+/* Position the border appropriately */
+.tree-item > .subtree {
+    margin-left: 12px;
+}
+
+/* First level tree items - no indentation */
+.folder-tree > .tree-item > .tree-link {
+    padding-left: 1.5rem;
+}
+
+/* Second level tree items - 25px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 15px);
+}
+
+/* Third level tree items - 50px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 30px);
+}
+
+/* Fourth level tree items - 75px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 45px);
+}
+
+/* Five level tree items - 100px indentation */
+.folder-tree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .subtree > .tree-item > .tree-link {
+    padding-left: calc(1.5rem + 60px);
+}
+
+/* Remove previously added margin */
+.subtree .tree-link {
+    margin-left: 0;
+}
+
+body.dark-theme .subtree {
+    border-left-color: rgba(255, 255, 255, 0.1);
+}
+
+.tree-item.expanded > .subtree {
+    display: block;
+}
+
+.not-loaded {
+    /* No display style here to not override the expanded state */
+}
+
+/* Popup Overlay (Same as home.css) */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.popup-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.popup-content {
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.popup-overlay.active .popup-content {
+    transform: translateY(0);
+}
+
+.popup-content h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.popup-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.popup-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.popup-form input[type="text"] {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.popup-form input[type="text"]:focus {
+    border-color: var(--accent-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+.popup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.btn-cancel, .btn-save {
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-cancel {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.btn-cancel:hover {
+    background-color: #e2e6ea;
+}
+
+.btn-save {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.btn-save:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+    
+    .content-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .content-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .categories-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 1rem;
+    }
+    
+    .category-box {
+        padding: 1rem 0.75rem;
+    }
+    
+    .category-icon {
+        font-size: 2rem;
+    }
+    
+    .category-name {
+        font-size: 0.9rem;
+    }
+    
+    .note-preview {
+        display: none;
+    }
+}
+
+.modal-footer .button.primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.fa-spinner {
+    margin-right: 5px;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-content {
+    background-color: white;
+    padding: 30px 50px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.loading-content i {
+    font-size: 40px;
+    color: #007bff;
+    margin-bottom: 15px;
+}
+
+.loading-content p {
+    font-size: 18px;
+    margin: 0;
+    color: #333;
+}
+
+/* Dark theme adjustments */
+body.dark-theme .loading-content {
+    background-color: #2a2a2a;
+}
+
+body.dark-theme .loading-content p {
+    color: #f0f0f0;
+}
+
+body.dark-theme .loading-content i {
+    color: #4a9eff;
+}
+
+/* Loading state styles */
+.loading-item, .empty-item, .error-item {
+    padding: 8px 8px 8px 25px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.loading-item i {
+    margin-right: 5px;
+    color: var(--accent-color);
+}
+
+.empty-item {
+    font-style: italic;
+}
+
+.error-item {
+    color: #e74c3c;
+}
+
+/* Add specific margin only to tree links inside subtrees */
+.subtree .tree-link {
+    margin-left: 0;
+}
+
+/* Common styling for all tree items */
+.tree-item .tree-link {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tree-item .tree-link i {
+    margin-right: 5px;
+}
+
+.tree-item .tree-link.active,
+.tree-item .tree-link:hover {
+    color: var(--accent-color);
+}
+
+.tree-item .tree-link.active i,
+.tree-item .tree-link:hover i {
+    color: var(--accent-color);
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.breadcrumbs ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.breadcrumbs li {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #666;
+}
+
+.breadcrumbs a {
+    color: #1976d2;
+    text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbs a.active {
+    font-weight: bold;
+    color: #333;
+}
+
+.breadcrumbs .separator {
+    margin: 0 8px;
+    color: #999;
+} 

@@ -50,6 +50,56 @@
     min-height: 400px;
 }
 
+/* Breadcrumb styles (matching folder.css) */
+.breadcrumbs {
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.breadcrumbs ul {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 10px 16px;
+    background-color: var(--background-secondary);
+    border-radius: 4px;
+    width: 100%;
+}
+
+.breadcrumbs li {
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumbs a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.breadcrumbs a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+.breadcrumbs a.active,
+.breadcrumbs span.active {
+    color: gray;
+    font-weight: 500;
+}
+
+.breadcrumbs .separator {
+    margin: 0 8px;
+    color: var(--text-muted);
+}
+
+/* Remove old breadcrumb styles */
+.breadcrumb, .breadcrumb-item, .breadcrumb-separator {
+    display: none;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
     .content {
