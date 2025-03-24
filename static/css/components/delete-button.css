@@ -1,0 +1,8 @@
+.button.secondary.delete-btn {
+    background-color: #F44336;
+    color: white;
+}
+
+.button.secondary.delete-btn:hover {
+    background-color: #D32F2F;
+} 
