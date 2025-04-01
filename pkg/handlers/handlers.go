@@ -288,11 +288,20 @@ func SaveHandler(c *gin.Context) {
 		log.Printf("Successfully created new page: %s", title)
 
 		// Delete old file with old title
-		if err := store.DeletePage(originalTitle); err != nil {
-			log.Printf("Warning: Failed to delete old page %s: %v", originalTitle, err)
+		oldFilePath := originalTitle
+		if folderPath != "" {
+			oldFilePath = folderPath + "/" + originalTitle
+		}
+		// Add .txt extension if not present
+		if !strings.HasSuffix(oldFilePath, ".txt") {
+			oldFilePath = oldFilePath + ".txt"
+		}
+		log.Printf("Attempting to delete old file: %s", oldFilePath)
+		if err := store.DeletePage(oldFilePath); err != nil {
+			log.Printf("Warning: Failed to delete old page %s: %v", oldFilePath, err)
 			// Continue even if delete fails
 		} else {
-			log.Printf("Successfully deleted old page: %s", originalTitle)
+			log.Printf("Successfully deleted old page: %s", oldFilePath)
 		}
 	} else {
 		// Normal save without title change
