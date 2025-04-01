@@ -47,6 +47,9 @@ func main() {
 		"add": func(a, b int) int {
 			return a + b
 		},
+		"sub": func(a, b int) int {
+			return a - b
+		},
 		"html": func(value interface{}) template.HTML {
 			return template.HTML(fmt.Sprint(value))
 		},
@@ -78,6 +81,7 @@ func main() {
 	router.POST("/category/create", handlers.CategoryCreateHandler)
 	router.GET("/category/*path", handlers.CategoryHandler)
 	router.GET("/api/folders/children/*path", handlers.GetFolderChildrenHandler)
+	router.DELETE("/api/folder/delete", handlers.DeleteFolderHandler)
 
 	// Auth routes
 	router.GET("/login", handlers.LoginHandler)

@@ -314,7 +314,60 @@ func (g *GitHubStorage) UpdatePage(page *types.Page) error {
 func (g *GitHubStorage) DeletePage(path string) error {
 	log.Printf("=== DeletePage START: %s ===", path)
 
-	// If path doesn't end with .txt, add it
+	// Special handling for .folder files
+	if strings.HasSuffix(path, "/.folder") {
+		// Get the file content first to get its SHA
+		fileContent, _, resp, err := g.client.Repositories.GetContents(
+			g.ctx,
+			g.owner,
+			g.repository,
+			path,
+			&github.RepositoryContentGetOptions{Ref: g.branch},
+		)
+
+		if err != nil {
+			log.Printf("Error getting .folder file: %v", err)
+			if resp != nil && resp.StatusCode == 404 {
+				log.Printf(".folder file doesn't exist (404), nothing to delete")
+				return nil
+			}
+			return fmt.Errorf("failed to get .folder file: %v", err)
+		}
+
+		if fileContent == nil {
+			log.Printf(".folder file content is nil, nothing to delete")
+			return nil
+		}
+
+		// File exists, delete it
+		opts := &github.RepositoryContentFileOptions{
+			Message: github.String(fmt.Sprintf("Delete .folder file: %s", path)),
+			SHA:     fileContent.SHA,
+			Branch:  github.String(g.branch),
+		}
+
+		_, resp, err = g.client.Repositories.DeleteFile(
+			g.ctx,
+			g.owner,
+			g.repository,
+			path,
+			opts,
+		)
+
+		if err != nil {
+			log.Printf("Error deleting .folder file: %v", err)
+			if resp != nil {
+				log.Printf("Response status: %s", resp.Status)
+			}
+			return fmt.Errorf("failed to delete .folder file: %v", err)
+		}
+
+		log.Printf("Successfully deleted .folder file: %s", path)
+		log.Printf("=== DeletePage END ===")
+		return nil
+	}
+
+	// Regular file handling (with .txt extension)
 	if !strings.HasSuffix(path, ".txt") {
 		// Check if this is a path with directories
 		if strings.Contains(path, "/") {
@@ -439,27 +492,62 @@ func (g *GitHubStorage) CreateFolder(path string) error {
 	log.Printf("=== CreateFolder START: %s ===", path)
 	ctx := context.Background()
 
-	// Create a .folder file to mark the directory
-	folderPath := path + "/.folder"
+	// Split the path into parts
+	parts := strings.Split(path, "/")
+	currentPath := ""
 
-	// GitHub requires content to be non-empty and properly encoded
-	// This is a small text file with a message explaining its purpose
-	content := []byte("This file marks the folder for the wiki system. Please do not delete.")
-
-	opts := &github.RepositoryContentFileOptions{
-		Message: github.String(fmt.Sprintf("Create folder: %s", path)),
-		Content: content,
-		Branch:  &g.branch,
-	}
-
-	log.Printf("Creating folder marker file at: %s", folderPath)
-	_, resp, err := g.client.Repositories.CreateFile(ctx, g.owner, g.repository, folderPath, opts)
-	if err != nil {
-		log.Printf("Error creating folder: %v", err)
-		if resp != nil {
-			log.Printf("GitHub API response status: %s", resp.Status)
+	// Create each level of the folder structure
+	for i, part := range parts {
+		if i == 0 {
+			currentPath = part
+		} else {
+			currentPath = currentPath + "/" + part
 		}
-		return fmt.Errorf("failed to create folder: %v", err)
+
+		// Create a .folder file to mark the directory
+		folderPath := currentPath + "/.folder"
+
+		// Check if the .folder file already exists
+		fileContent, _, resp, err := g.client.Repositories.GetContents(
+			ctx,
+			g.owner,
+			g.repository,
+			folderPath,
+			&github.RepositoryContentGetOptions{Ref: g.branch},
+		)
+
+		if err != nil {
+			if resp != nil && resp.StatusCode == 404 {
+				// File doesn't exist, create it
+				content := []byte("This file marks the folder for the wiki system. Please do not delete.")
+				opts := &github.RepositoryContentFileOptions{
+					Message: github.String(fmt.Sprintf("Create folder: %s", currentPath)),
+					Content: content,
+					Branch:  &g.branch,
+				}
+
+				log.Printf("Creating folder marker file at: %s", folderPath)
+				_, resp, err := g.client.Repositories.CreateFile(ctx, g.owner, g.repository, folderPath, opts)
+				if err != nil {
+					log.Printf("Error creating folder: %v", err)
+					if resp != nil {
+						log.Printf("GitHub API response status: %s", resp.Status)
+					}
+					return fmt.Errorf("failed to create folder: %v", err)
+				}
+			} else {
+				// Some other error occurred
+				log.Printf("Error checking folder marker: %v", err)
+				return fmt.Errorf("failed to check folder marker: %v", err)
+			}
+		} else if fileContent != nil {
+			log.Printf("Folder marker already exists at: %s", folderPath)
+		}
+
+		// Add a small delay between creating folders to ensure GitHub's API has time to process
+		if i < len(parts)-1 {
+			time.Sleep(time.Second)
+		}
 	}
 
 	log.Printf("Successfully created folder: %s", path)
@@ -469,11 +557,17 @@ func (g *GitHubStorage) CreateFolder(path string) error {
 
 // DeleteFolder deletes a folder from GitHub
 func (g *GitHubStorage) DeleteFolder(path string) error {
+	log.Printf("=== DeleteFolder START: %s ===", path)
 	ctx := context.Background()
 
-	// Get all contents in the folder
-	_, contents, _, err := g.client.Repositories.GetContents(ctx, g.owner, g.repository, path, nil)
+	// First, get all contents in the folder
+	_, contents, resp, err := g.client.Repositories.GetContents(ctx, g.owner, g.repository, path, nil)
 	if err != nil {
+		// If the error is 404, the folder doesn't exist, which is fine
+		if resp != nil && resp.StatusCode == 404 {
+			log.Printf("Folder doesn't exist (404), considering it deleted")
+			return nil
+		}
 		return fmt.Errorf("failed to get folder contents: %v", err)
 	}
 
@@ -484,6 +578,24 @@ func (g *GitHubStorage) DeleteFolder(path string) error {
 		}
 	}
 
+	// Finally, try to delete the .folder file
+	folderPath := path + "/.folder"
+	fileContent, _, resp, err := g.client.Repositories.GetContents(ctx, g.owner, g.repository, folderPath, nil)
+	if err == nil && fileContent != nil {
+		// .folder file exists, delete it
+		opts := &github.RepositoryContentFileOptions{
+			Message: github.String(fmt.Sprintf("Delete folder marker: %s", path)),
+			SHA:     fileContent.SHA,
+			Branch:  github.String(g.branch),
+		}
+		_, _, err = g.client.Repositories.DeleteFile(ctx, g.owner, g.repository, folderPath, opts)
+		if err != nil {
+			log.Printf("Warning: Failed to delete .folder file: %v", err)
+		}
+	}
+
+	log.Printf("Successfully deleted folder: %s", path)
+	log.Printf("=== DeleteFolder END ===")
 	return nil
 }
 
@@ -583,4 +695,21 @@ func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error
 
 	log.Printf("=== GetPagesInFolder END: %s, found %d pages ===", folderPath, len(pages))
 	return pages, nil
+}
+
+// Getter methods for GitHubStorage
+func (g *GitHubStorage) Client() *github.Client {
+	return g.client
+}
+
+func (g *GitHubStorage) Context() context.Context {
+	return g.ctx
+}
+
+func (g *GitHubStorage) Owner() string {
+	return g.owner
+}
+
+func (g *GitHubStorage) Repository() string {
+	return g.repository
 }

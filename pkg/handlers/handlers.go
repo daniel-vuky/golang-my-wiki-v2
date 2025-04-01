@@ -288,21 +288,30 @@ func SaveHandler(c *gin.Context) {
 		log.Printf("Successfully created new page: %s", title)
 
 		// Delete old file with old title
-		if err := store.DeletePage(originalTitle); err != nil {
-			log.Printf("Warning: Failed to delete old page %s: %v", originalTitle, err)
+		oldFilePath := originalTitle
+		if folderPath != "" {
+			oldFilePath = folderPath + "/" + originalTitle
+		}
+		// Add .txt extension if not present
+		if !strings.HasSuffix(oldFilePath, ".txt") {
+			oldFilePath = oldFilePath + ".txt"
+		}
+		log.Printf("Attempting to delete old file: %s", oldFilePath)
+		if err := store.DeletePage(oldFilePath); err != nil {
+			log.Printf("Warning: Failed to delete old page %s: %v", oldFilePath, err)
 			// Continue even if delete fails
 		} else {
-			log.Printf("Successfully deleted old page: %s", originalTitle)
+			log.Printf("Successfully deleted old page: %s", oldFilePath)
 		}
 	} else {
 		// Normal save without title change
 		// Check if the page exists
-		log.Printf("No title change detected, checking if page exists: %s", title)
-		existingPage, err := store.GetPage(title)
+		log.Printf("No title change detected, checking if page exists: %s", filePath)
+		existingPage, err := store.GetPage(filePath) // Use filePath instead of title to include folder path
 
 		if err != nil {
 			// Page doesn't exist, create it
-			log.Printf("Page %s does not exist, creating new page", title)
+			log.Printf("Page %s does not exist, creating new page", filePath)
 
 			if err := store.CreatePage(page); err != nil {
 				log.Printf("Error creating page: %v", err)
@@ -311,10 +320,10 @@ func SaveHandler(c *gin.Context) {
 				})
 				return
 			}
-			log.Printf("Successfully created new page: %s", title)
+			log.Printf("Successfully created new page: %s", filePath)
 		} else {
 			// Page exists, update it
-			log.Printf("Page %s exists, updating content", title)
+			log.Printf("Page %s exists, updating content", filePath)
 			page.LastModified = existingPage.LastModified
 
 			if err := store.UpdatePage(page); err != nil {
@@ -324,12 +333,17 @@ func SaveHandler(c *gin.Context) {
 				})
 				return
 			}
-			log.Printf("Successfully updated page: %s", title)
+			log.Printf("Successfully updated page: %s", filePath)
 		}
 	}
 
 	log.Println("=== SaveHandler END ===")
-	c.Redirect(http.StatusFound, "/view/"+title)
+	// Include folder path in redirect URL if present
+	redirectURL := "/view/" + title
+	if folderPath != "" {
+		redirectURL += "?folder=" + folderPath
+	}
+	c.Redirect(http.StatusFound, redirectURL)
 }
 
 // DeleteHandler handles deleting a page
@@ -359,8 +373,9 @@ func CategoryCreateHandler(c *gin.Context) {
 
 	// Parse request body
 	var requestBody struct {
-		Name   string `json:"name"`
-		Parent string `json:"parent"`
+		Name       string `json:"name"`
+		ParentPath string `json:"parentPath"`
+		SHA        string `json:"sha"`
 	}
 
 	log.Println("Attempting to bind JSON")
@@ -373,10 +388,12 @@ func CategoryCreateHandler(c *gin.Context) {
 	}
 
 	categoryName := requestBody.Name
-	parentFolder := requestBody.Parent
+	parentFolder := requestBody.ParentPath
+	parentFolderSha := requestBody.SHA
 
 	log.Printf("Received category name: %s", categoryName)
 	log.Printf("Parent folder: %s", parentFolder)
+	log.Printf("Parent folder SHA: %s", parentFolderSha)
 
 	if categoryName == "" {
 		log.Println("Error: Category name is empty")
@@ -389,6 +406,31 @@ func CategoryCreateHandler(c *gin.Context) {
 	// Determine full path based on parent
 	var fullPath string
 	if parentFolder != "" {
+		// Check if parent folder exists by checking the list of folders
+		allFolders, err := store.ListFolders()
+		if err != nil {
+			log.Printf("Error getting folders: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Sprintf("Failed to get folders: %v", err),
+			})
+			return
+		}
+
+		parentExists := false
+		for _, folder := range allFolders {
+			if folder == parentFolder {
+				parentExists = true
+				break
+			}
+		}
+
+		if !parentExists {
+			log.Printf("Parent folder does not exist: %s", parentFolder)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Parent folder '%s' does not exist", parentFolder),
+			})
+			return
+		}
 		fullPath = parentFolder + "/" + categoryName
 	} else {
 		fullPath = categoryName
@@ -422,12 +464,55 @@ func CategoryCreateHandler(c *gin.Context) {
 		return
 	}
 
+	// Force refresh the folder list by invalidating cache
+	if cacheable, ok := store.(interface{ InvalidateCache() error }); ok {
+		if err := cacheable.InvalidateCache(); err != nil {
+			log.Printf("Warning: Failed to invalidate cache: %v", err)
+		}
+	}
+
 	log.Printf("Successfully created category: %s", fullPath)
 	log.Println("=== CategoryCreateHandler END ===")
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": fmt.Sprintf("Category '%s' created successfully", categoryName),
+	})
+}
+
+// DeleteFolderHandler handles deleting a folder
+func DeleteFolderHandler(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Folder path is required",
+		})
+		return
+	}
+
+	log.Printf("=== DeleteFolderHandler START: %s ===", path)
+
+	// Delete the folder
+	if err := store.DeleteFolder(path); err != nil {
+		log.Printf("Error deleting folder: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to delete folder: %v", err),
+		})
+		return
+	}
+
+	// Force refresh the folder list by invalidating cache
+	if cacheable, ok := store.(interface{ InvalidateCache() error }); ok {
+		if err := cacheable.InvalidateCache(); err != nil {
+			log.Printf("Warning: Failed to invalidate cache: %v", err)
+		}
+	}
+
+	log.Printf("Successfully deleted folder: %s", path)
+	log.Printf("=== DeleteFolderHandler END ===")
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Folder '%s' deleted successfully", path),
 	})
 }
 
@@ -517,6 +602,21 @@ func CategoryHandler(c *gin.Context) {
 	// Check if at max nesting level - only if at max level
 	isMaxLevel := currentLevel >= maxLevel
 
+	// Get parent folder's SHA if this is a subfolder
+	var parentFolderSha string
+	if path != "" {
+		parentPath := getParentPath(path)
+		if parentPath != "" {
+			// Use GetPage to check if the parent folder exists and get its SHA
+			folderPath := parentPath + "/.folder"
+			page, err := store.GetPage(folderPath)
+			if err == nil && page != nil {
+				// Get the SHA from the page content
+				parentFolderSha = string(page.Content)
+			}
+		}
+	}
+
 	log.Printf("Loading folder view for %s with %d subfolders and %d notes (level: %d, max: %v, maxLevel: %d)",
 		path, len(subFolders), len(notes), currentLevel, isMaxLevel, maxLevel)
 
@@ -531,6 +631,7 @@ func CategoryHandler(c *gin.Context) {
 		"CurrentLevel":    currentLevel,
 		"MaxLevel":        maxLevel,
 		"MaxLevelReached": isMaxLevel,
+		"ParentFolderSha": parentFolderSha,
 		"User": gin.H{
 			"Name": "Admin",
 		},

@@ -266,6 +266,17 @@ func (cg *CachedGitHubStorage) DeleteFolder(path string) error {
 		log.Printf("Failed to invalidate cache: %v", err)
 	}
 
+	// Force refresh of folder list immediately to ensure changes are reflected
+	folders, err := cg.github.ListFolders()
+	if err != nil {
+		log.Printf("Warning: Failed to refresh folder list after delete: %v", err)
+	} else {
+		// Update cache with the new folder list
+		if err := cg.cache.SetFolderList(folders); err != nil {
+			log.Printf("Failed to cache updated folder list: %v", err)
+		}
+	}
+
 	return nil
 }
 

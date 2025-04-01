@@ -3,88 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{if .Title}}Edit: {{.Title}}{{else}}New Note{{end}} - Daniel's Wiki</title>
+    <title>{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}} - Daniel's Wiki</title>
     <!-- Base styles -->
     <link rel="stylesheet" href="/static/css/base.css">
     <!-- Component styles -->
     <link rel="stylesheet" href="/static/css/components/sidebar.css">
+    <link rel="stylesheet" href="/static/css/components/tinymce.css">
     <!-- Page specific styles -->
     <link rel="stylesheet" href="/static/css/pages/edit.css">
-    <!-- CodeMirror styles -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <link rel="stylesheet" href="/static/css/pages/folder.css">
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="/static/js/tinymce/tinymce.min.js"></script>
 </head>
 <body class="logged-in">
     <div class="wiki-container">
         {{template "folder_sidebar" .}}
         <main class="content">
             <header class="content-header">
-                <h2>
-                    <i class="fas fa-edit"></i> {{if .Title}}Edit: {{.Title}}{{else}}New Note{{end}}
-                </h2>
-                <div class="breadcrumbs">
-                    <ul>
-                        {{range .Breadcrumbs}}
-                        <li>
-                            <a href="{{if eq .path ""}}/ {{else}}/category/{{.path}}{{end}}" {{if eq .path $.FolderPath}}class="active"{{end}}>
-                                {{.name}}
-                            </a>
-                            {{if ne .path $.FolderPath}}
-                            <span class="separator">/</span>
-                            {{end}}
-                        </li>
-                        {{end}}
-                    </ul>
-                </div>
+                <h2><i class="fas fa-file-alt"></i>{{if .IsNewPage}} New Page{{else}} Edit {{.Title}}{{end}}</h2>
                 <div class="content-actions">
-                    <button id="preview-btn" class="button info">
-                        <i class="fas fa-eye"></i> Preview
-                    </button>
-                    <button id="save-btn" class="button primary">
-                        <i class="fas fa-check"></i> Saved
+                    {{if not .IsNewPage}}
+                    <a href="/view/{{.Title}}{{if .FolderPath}}?folder={{.FolderPath}}{{end}}" class="back-btn">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    {{end}}
+                    <button type="submit" form="pageForm" class="button primary">
+                        <i class="fas fa-save"></i> {{if .IsNewPage}}Create Note{{else}}Save Changes{{end}}
                     </button>
                 </div>
             </header>
             
+            {{if .FolderPath}}
+            <div class="breadcrumbs">
+                <ul>
+                    {{range $index, $crumb := .Breadcrumbs}}
+                    <li>
+                        <a href="{{if eq $crumb.path ""}}/ {{else}}/category/{{$crumb.path}}{{end}}">
+                            {{$crumb.name}}
+                        </a>
+                        <span class="separator"> / </span>
+                    </li>
+                    {{end}}
+                    <li>
+                        <span class="active">{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}}</span>
+                    </li>
+                </ul>
+            </div>
+            {{end}}
             <div class="content-body">
-                <form id="note-form" class="note-form">
+                <form id="pageForm" action="/save" method="POST">
+                    <input type="hidden" name="original_title" value="{{.Title}}">
+                    <input type="hidden" name="folder_path" value="{{.FolderPath}}">
+                    <input type="hidden" name="current_path" value="{{.CurrentPath}}">
                     <div class="form-group">
-                        <label for="title">Title</label>
-                        <input type="text" id="title" name="title" value="{{.Title}}" required>
+                        <label for="title">Page Title</label>
+                        <input type="text" id="title" name="title" required placeholder="Enter page title" class="form-control" value="{{.Title}}">
                     </div>
                     <div class="form-group">
-                        <label for="folder">Folder</label>
-                        <input type="text" id="folder" name="folder" value="{{.FolderPath}}" placeholder="Leave empty for root">
-                    </div>
-                    <div class="form-group">
-                        <label for="content">Content</label>
-                        <textarea id="content" name="content">{{.Content}}</textarea>
+                        <textarea id="editor" name="content">{{.Content}}</textarea>
                     </div>
                 </form>
-                
-                <!-- Preview Container -->
-                <div id="preview-container" class="preview-container" style="display: none;">
-                    <div id="preview-content" class="preview-content"></div>
-                </div>
             </div>
         </main>
     </div>
-    
-    <!-- CodeMirror -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/markdown/markdown.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.12/marked.min.js"></script>
-    
-    <script>
-        // Initialize data for JavaScript
-        window.currentPath = "{{.CurrentPath}}";
-        window.folderPath = "{{.FolderPath}}";
-        window.noteTitle = "{{.Title}}";
-    </script>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <i class="fas fa-moon"></i>
+    </button>
+    <div id="sidebar-data" 
+         data-current-path="{{.CurrentPath}}"
+         data-folder-path="{{.FolderPath}}"
+         data-note-title="{{.Title}}"
+         data-is-new-page="{{if .IsNewPage}}true{{else}}false{{end}}">
+    </div>
     <script src="/static/js/theme.js"></script>
-    <script src="/static/js/edit.js"></script>
+    <script src="/static/js/tinymce-config.js"></script>
     <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/pages/edit.js"></script>
+    <script>
+        // Initialize sidebar data from data attributes
+        const sidebarDataEl = document.getElementById('sidebar-data');
+        window.sidebarData = {
+            currentPath: sidebarDataEl.dataset.currentPath,
+            folderPath: sidebarDataEl.dataset.folderPath,
+            noteTitle: sidebarDataEl.dataset.noteTitle,
+            isNewPage: sidebarDataEl.dataset.isNewPage === 'true'
+        };
+    </script>
 </body>
 </html> 
