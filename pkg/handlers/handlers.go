@@ -297,12 +297,12 @@ func SaveHandler(c *gin.Context) {
 	} else {
 		// Normal save without title change
 		// Check if the page exists
-		log.Printf("No title change detected, checking if page exists: %s", title)
-		existingPage, err := store.GetPage(title)
+		log.Printf("No title change detected, checking if page exists: %s", filePath)
+		existingPage, err := store.GetPage(filePath) // Use filePath instead of title to include folder path
 
 		if err != nil {
 			// Page doesn't exist, create it
-			log.Printf("Page %s does not exist, creating new page", title)
+			log.Printf("Page %s does not exist, creating new page", filePath)
 
 			if err := store.CreatePage(page); err != nil {
 				log.Printf("Error creating page: %v", err)
@@ -311,10 +311,10 @@ func SaveHandler(c *gin.Context) {
 				})
 				return
 			}
-			log.Printf("Successfully created new page: %s", title)
+			log.Printf("Successfully created new page: %s", filePath)
 		} else {
 			// Page exists, update it
-			log.Printf("Page %s exists, updating content", title)
+			log.Printf("Page %s exists, updating content", filePath)
 			page.LastModified = existingPage.LastModified
 
 			if err := store.UpdatePage(page); err != nil {
@@ -324,12 +324,17 @@ func SaveHandler(c *gin.Context) {
 				})
 				return
 			}
-			log.Printf("Successfully updated page: %s", title)
+			log.Printf("Successfully updated page: %s", filePath)
 		}
 	}
 
 	log.Println("=== SaveHandler END ===")
-	c.Redirect(http.StatusFound, "/view/"+title)
+	// Include folder path in redirect URL if present
+	redirectURL := "/view/" + title
+	if folderPath != "" {
+		redirectURL += "?folder=" + folderPath
+	}
+	c.Redirect(http.StatusFound, redirectURL)
 }
 
 // DeleteHandler handles deleting a page
