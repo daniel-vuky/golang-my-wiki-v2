@@ -37,12 +37,12 @@
             {{if .FolderPath}}
             <div class="breadcrumbs">
                 <ul>
-                    {{range .Breadcrumbs}}
+                    {{range $index, $crumb := .Breadcrumbs}}
                     <li>
-                        <a href="{{if eq .path ""}}/ {{else}}/category/{{.path}}{{end}}">
-                            {{.name}}
+                        <a href="{{if eq $crumb.path ""}}/ {{else}}/category/{{$crumb.path}}{{end}}">
+                            {{$crumb.name}}
                         </a>
-                        <span class="separator">/</span>
+                        <span class="separator"> / </span>
                     </li>
                     {{end}}
                     <li>
@@ -70,33 +70,25 @@
     <button class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon"></i>
     </button>
-    <script>
-        // Initialize sidebar data
-        window.sidebarData = {
-            currentPath: "{{.CurrentPath}}",
-            folderPath: "{{.FolderPath}}",
-            noteTitle: "{{.Title}}",
-            isNewPage: {{if .IsNewPage}}true{{else}}false{{end}}
-        };
-    </script>
+    <div id="sidebar-data" 
+         data-current-path="{{.CurrentPath}}"
+         data-folder-path="{{.FolderPath}}"
+         data-note-title="{{.Title}}"
+         data-is-new-page="{{if .IsNewPage}}true{{else}}false{{end}}">
+    </div>
     <script src="/static/js/theme.js"></script>
     <script src="/static/js/tinymce-config.js"></script>
     <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/pages/edit.js"></script>
     <script>
-        // Initialize sidebar functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            setupTreeExpandCollapse();
-            
-            // Expand to current folder and highlight current note
-            if (window.sidebarData.currentPath) {
-                expandPathToCurrentFolder(window.sidebarData.currentPath);
-            }
-            
-            // Highlight current note if not a new page
-            if (!window.sidebarData.isNewPage && window.sidebarData.noteTitle && window.sidebarData.folderPath) {
-                highlightCurrentNote(window.sidebarData.noteTitle, window.sidebarData.folderPath);
-            }
-        });
+        // Initialize sidebar data from data attributes
+        const sidebarDataEl = document.getElementById('sidebar-data');
+        window.sidebarData = {
+            currentPath: sidebarDataEl.dataset.currentPath,
+            folderPath: sidebarDataEl.dataset.folderPath,
+            noteTitle: sidebarDataEl.dataset.noteTitle,
+            isNewPage: sidebarDataEl.dataset.isNewPage === 'true'
+        };
     </script>
 </body>
 </html> 
