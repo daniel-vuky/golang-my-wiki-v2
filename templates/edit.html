@@ -3,332 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}} - Daniel's Wiki</title>
+    <title>{{if .Title}}Edit: {{.Title}}{{else}}New Note{{end}} - Daniel's Wiki</title>
     <!-- Base styles -->
     <link rel="stylesheet" href="/static/css/base.css">
     <!-- Component styles -->
     <link rel="stylesheet" href="/static/css/components/sidebar.css">
-    <link rel="stylesheet" href="/static/css/components/tinymce.css">
     <!-- Page specific styles -->
     <link rel="stylesheet" href="/static/css/pages/edit.css">
-    <link rel="stylesheet" href="/static/css/pages/folder.css">
+    <!-- CodeMirror styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="/static/js/tinymce/tinymce.min.js"></script>
 </head>
 <body class="logged-in">
     <div class="wiki-container">
         {{template "folder_sidebar" .}}
         <main class="content">
             <header class="content-header">
-                <h2><i class="fas fa-file-alt"></i>{{if .IsNewPage}} New Page{{else}} Edit {{.Title}}{{end}}</h2>
+                <h2>
+                    <i class="fas fa-edit"></i> {{if .Title}}Edit: {{.Title}}{{else}}New Note{{end}}
+                </h2>
+                <div class="breadcrumbs">
+                    <ul>
+                        {{range .Breadcrumbs}}
+                        <li>
+                            <a href="{{if eq .path ""}}/ {{else}}/category/{{.path}}{{end}}" {{if eq .path $.FolderPath}}class="active"{{end}}>
+                                {{.name}}
+                            </a>
+                            {{if ne .path $.FolderPath}}
+                            <span class="separator">/</span>
+                            {{end}}
+                        </li>
+                        {{end}}
+                    </ul>
+                </div>
                 <div class="content-actions">
-                    {{if not .IsNewPage}}
-                    <a href="/view/{{.Title}}{{if .FolderPath}}?folder={{.FolderPath}}{{end}}" class="back-btn">
-                        <i class="fas fa-arrow-left"></i> Back
-                    </a>
-                    {{end}}
-                    <button type="submit" form="pageForm" class="button primary">
-                        <i class="fas fa-save"></i> {{if .IsNewPage}}Create Note{{else}}Save Changes{{end}}
+                    <button id="preview-btn" class="button info">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button id="save-btn" class="button primary">
+                        <i class="fas fa-check"></i> Saved
                     </button>
                 </div>
             </header>
             
-            {{if .FolderPath}}
-            <div class="breadcrumbs">
-                <ul>
-                    {{range .Breadcrumbs}}
-                    <li>
-                        <a href="{{if eq .path ""}}/ {{else}}/category/{{.path}}{{end}}">
-                            {{.name}}
-                        </a>
-                        <span class="separator">/</span>
-                    </li>
-                    {{end}}
-                    <li>
-                        <span class="active">{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}}</span>
-                    </li>
-                </ul>
-            </div>
-            {{end}}
             <div class="content-body">
-                <form id="pageForm" action="/save" method="POST">
-                    <input type="hidden" name="original_title" value="{{.Title}}">
-                    <input type="hidden" name="folder_path" value="{{.FolderPath}}">
+                <form id="note-form" class="note-form">
                     <div class="form-group">
-                        <label for="title">Page Title</label>
-                        <input type="text" id="title" name="title" required placeholder="Enter page title" class="form-control" value="{{.Title}}">
+                        <label for="title">Title</label>
+                        <input type="text" id="title" name="title" value="{{.Title}}" required>
                     </div>
                     <div class="form-group">
-                        <textarea id="editor" name="content">{{.Content}}</textarea>
+                        <label for="folder">Folder</label>
+                        <input type="text" id="folder" name="folder" value="{{.FolderPath}}" placeholder="Leave empty for root">
+                    </div>
+                    <div class="form-group">
+                        <label for="content">Content</label>
+                        <textarea id="content" name="content">{{.Content}}</textarea>
                     </div>
                 </form>
+                
+                <!-- Preview Container -->
+                <div id="preview-container" class="preview-container" style="display: none;">
+                    <div id="preview-content" class="preview-content"></div>
+                </div>
             </div>
         </main>
     </div>
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <i class="fas fa-moon"></i>
-    </button>
-    <script src="/static/js/theme.js"></script>
-    <script src="/static/js/tinymce-config.js"></script>
+    
+    <!-- CodeMirror -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.12/marked.min.js"></script>
+    
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize tree expand/collapse
-            setupTreeExpandCollapse();
-            
-            // Auto-expand path to current folder/note
-            const folderPath = "{{.FolderPath}}";
-            const noteTitle = "{{.Title}}";
-            
-            if (folderPath) {
-                console.log("Current note:", noteTitle, "in folder:", folderPath);
-                
-                // Force expand all parent folders first 
-                const parts = folderPath.split('/');
-                let currentPath = '';
-                
-                // Process each folder in the path sequentially
-                const processNextFolder = (index) => {
-                    if (index >= parts.length) {
-                        // We've processed all folders in the path, now highlight the note
-                        setTimeout(() => {
-                            highlightCurrentNote(noteTitle, folderPath);
-                        }, 300);
-                        return;
-                    }
-                    
-                    // Build the path incrementally
-                    if (index > 0) currentPath += '/';
-                    currentPath += parts[index];
-                    
-                    console.log(`Processing folder at index ${index}: ${currentPath}`);
-                    
-                    // Find this folder in the tree
-                    const folderItem = document.querySelector(`.tree-item[data-path="${currentPath}"]`);
-                    if (folderItem) {
-                        // Mark as expanded
-                        folderItem.classList.add('expanded');
-                        
-                        // Find the subtree
-                        const subtree = folderItem.querySelector('.subtree');
-                        if (subtree) {
-                            // Show the subtree
-                            subtree.style.display = 'block';
-                            
-                            // Rotate the expand icon
-                            const expandIcon = folderItem.querySelector('.expand-icon i');
-                            if (expandIcon) {
-                                expandIcon.style.transform = 'rotate(90deg)';
-                            }
-                            
-                            // If not loaded yet, load its children before continuing
-                            if (subtree.classList.contains('not-loaded')) {
-                                loadFolderChildren(currentPath, subtree, () => {
-                                    // Process next folder in path after this one is loaded
-                                    processNextFolder(index + 1);
-                                });
-                            } else {
-                                // Already loaded, continue to next folder
-                                processNextFolder(index + 1);
-                            }
-                        } else {
-                            // No subtree, continue to next folder
-                            processNextFolder(index + 1);
-                        }
-                    } else {
-                        console.log(`Folder ${currentPath} not found in sidebar`);
-                        // Folder not found in sidebar, try the next one
-                        processNextFolder(index + 1);
-                    }
-                };
-                
-                // Start processing from the first folder
-                processNextFolder(0);
-            }
-        });
-        
-        function setupTreeExpandCollapse() {
-            // Get all expand icons
-            const expandIcons = document.querySelectorAll('.expand-icon');
-            
-            expandIcons.forEach(icon => {
-                icon.addEventListener('click', handleExpandCollapse);
-            });
-        }
-        
-        function handleExpandCollapse(event) {
-            event.stopPropagation(); // Prevent bubbling
-            
-            const treeItem = this.closest('.tree-item');
-            const subtree = treeItem.querySelector('.subtree');
-            
-            if (!treeItem.classList.contains('expanded')) {
-                // Expanding - Check if we need to load children
-                if (subtree && subtree.classList.contains('not-loaded')) {
-                    const path = treeItem.getAttribute('data-path');
-                    loadFolderChildren(path, subtree);
-                }
-            }
-            
-            // Toggle expanded state
-            treeItem.classList.toggle('expanded');
-            
-            // Toggle visibility of the subtree
-            if (subtree) {
-                if (treeItem.classList.contains('expanded')) {
-                    subtree.style.display = 'block';
-                } else {
-                    subtree.style.display = 'none';
-                }
-            }
-        }
-        
-        // Function to load folder children from API
-        function loadFolderChildren(folderPath, subtree, callback) {
-            // Get folder children via API
-            const apiUrl = folderPath === '' 
-                ? '/api/folders/children/' 
-                : `/api/folders/children/${folderPath}`;
-            
-            console.log("Loading children for folder:", folderPath);
-            
-            fetch(apiUrl)
-                .then(response => response.json())
-                .then(data => {
-                    // Clear loading indicator
-                    subtree.innerHTML = '';
-                    subtree.classList.remove('not-loaded');
-                    
-                    // No children case
-                    if (data.children.length === 0) {
-                        subtree.innerHTML = '<li class="empty-item">No subfolders</li>';
-                        if (callback) callback();
-                        return;
-                    }
-                    
-                    const folderPath = "{{.FolderPath}}";
-                    const noteTitle = "{{.Title}}";
-                    
-                    // Add children to the subtree
-                    data.children.forEach(child => {
-                        const childItem = document.createElement('li');
-                        childItem.className = `tree-item ${child.HasChildren ? 'has-children' : ''}`;
-                        childItem.setAttribute('data-path', child.Path);
-                        childItem.setAttribute('data-type', child.IsNote ? 'note' : 'folder');
-                        
-                        let html = '';
-                        if (child.HasChildren && !child.IsNote) {
-                            html += `<span class="expand-icon"><i class="fas fa-caret-right"></i></span>`;
-                        }
-                        
-                        const isActive = child.Path === "{{.CurrentPath}}";
-                        // Check if this child is the current note we're viewing
-                        const isCurrentNote = child.IsNote && child.Name === noteTitle && 
-                                             folderPath && (child.Path === folderPath + '/' + noteTitle || 
-                                                           child.Path.endsWith('/' + noteTitle));
-                        
-                        if (child.IsNote) {
-                            // Create note link - use view path for notes
-                            let noteTitle = child.Name;
-                            let noteFolderPath = child.Path.substring(0, child.Path.lastIndexOf('/')); // Extract folder path from note path
-                            html += `<a href="/view/${noteTitle}?folder=${noteFolderPath}" class="tree-link ${isCurrentNote ? 'active' : ''}">
-                                <i class="fas fa-file-alt"></i> ${child.Name}
-                            </a>`;
-                            
-                            if (isCurrentNote) {
-                                console.log("Found current note in folder children:", child.Name);
-                            }
-                        } else {
-                            // Create folder link
-                            html += `<a href="/category/${child.Path}" class="tree-link ${isActive ? 'active' : ''}">
-                                <i class="fas fa-folder${isActive ? '-open' : ''}"></i> ${child.Name}
-                            </a>`;
-                            
-                            if (child.HasChildren) {
-                                html += `<ul class="subtree not-loaded"></ul>`;
-                            }
-                        }
-                        
-                        childItem.innerHTML = html;
-                        subtree.appendChild(childItem);
-                        
-                        // Add event listener to new expand icon
-                        const expandIcon = childItem.querySelector('.expand-icon');
-                        if (expandIcon) {
-                            expandIcon.addEventListener('click', handleExpandCollapse);
-                        }
-                        
-                        // If this is the current note, highlight it
-                        if (isCurrentNote) {
-                            const noteLink = childItem.querySelector('.tree-link');
-                            if (noteLink) noteLink.classList.add('active');
-                        }
-                    });
-                    
-                    // After fully loading children, call the callback if provided
-                    if (callback) callback();
-                })
-                .catch(error => {
-                    console.error('Error loading folder children:', error);
-                    subtree.innerHTML = '<li class="error-item">Error loading folders</li>';
-                    if (callback) callback();
-                });
-        }
-        
-        // Function to highlight the current note in the tree
-        function highlightCurrentNote(noteTitle, folderPath) {
-            if (!noteTitle || !folderPath) return;
-            
-            console.log("Trying to highlight note:", noteTitle, "in folder:", folderPath);
-            
-            // Look for notes with matching title in the folder's children
-            const folderItem = document.querySelector(`.tree-item[data-path="${folderPath}"]`);
-            if (folderItem) {
-                const subtree = folderItem.querySelector('.subtree');
-                if (subtree && !subtree.classList.contains('not-loaded')) {
-                    // Folder's children are already loaded, try to find the note
-                    const noteItems = subtree.querySelectorAll(`.tree-item[data-type="note"]`);
-                    let foundNote = false;
-                    
-                    for (const noteItem of noteItems) {
-                        const noteLink = noteItem.querySelector('.tree-link');
-                        if (noteLink) {
-                            // Trim whitespace and compare with note title
-                            const linkText = noteLink.textContent.trim();
-                            console.log("Comparing:", linkText, "with:", noteTitle);
-                            
-                            if (linkText === noteTitle) {
-                                noteLink.classList.add('active');
-                                console.log("Found and highlighted note:", noteTitle);
-                                foundNote = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!foundNote) {
-                        console.log("Note not found in loaded children. Note title:", noteTitle);
-                    }
-                } else if (subtree) {
-                    // Need to load the folder's children
-                    console.log("Loading folder children to find note");
-                    loadFolderChildren(folderPath, subtree, function() {
-                        // After loading, try again to find the note
-                        const noteItems = subtree.querySelectorAll(`.tree-item[data-type="note"]`);
-                        for (const noteItem of noteItems) {
-                            const noteLink = noteItem.querySelector('.tree-link');
-                            if (noteLink && noteLink.textContent.trim() === noteTitle) {
-                                noteLink.classList.add('active');
-                                console.log("Found and highlighted note after loading:", noteTitle);
-                                return;
-                            }
-                        }
-                    });
-                }
-            } else {
-                console.log("Folder item not found for path:", folderPath);
-            }
-        }
+        // Initialize data for JavaScript
+        window.currentPath = "{{.CurrentPath}}";
+        window.folderPath = "{{.FolderPath}}";
+        window.noteTitle = "{{.Title}}";
     </script>
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/edit.js"></script>
+    <script src="/static/js/sidebar.js"></script>
 </body>
 </html> 
