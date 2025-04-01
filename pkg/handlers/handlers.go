@@ -364,8 +364,9 @@ func CategoryCreateHandler(c *gin.Context) {
 
 	// Parse request body
 	var requestBody struct {
-		Name   string `json:"name"`
-		Parent string `json:"parent"`
+		Name       string `json:"name"`
+		ParentPath string `json:"parentPath"`
+		SHA        string `json:"sha"`
 	}
 
 	log.Println("Attempting to bind JSON")
@@ -378,10 +379,12 @@ func CategoryCreateHandler(c *gin.Context) {
 	}
 
 	categoryName := requestBody.Name
-	parentFolder := requestBody.Parent
+	parentFolder := requestBody.ParentPath
+	parentFolderSha := requestBody.SHA
 
 	log.Printf("Received category name: %s", categoryName)
 	log.Printf("Parent folder: %s", parentFolder)
+	log.Printf("Parent folder SHA: %s", parentFolderSha)
 
 	if categoryName == "" {
 		log.Println("Error: Category name is empty")
@@ -394,6 +397,31 @@ func CategoryCreateHandler(c *gin.Context) {
 	// Determine full path based on parent
 	var fullPath string
 	if parentFolder != "" {
+		// Check if parent folder exists by checking the list of folders
+		allFolders, err := store.ListFolders()
+		if err != nil {
+			log.Printf("Error getting folders: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Sprintf("Failed to get folders: %v", err),
+			})
+			return
+		}
+
+		parentExists := false
+		for _, folder := range allFolders {
+			if folder == parentFolder {
+				parentExists = true
+				break
+			}
+		}
+
+		if !parentExists {
+			log.Printf("Parent folder does not exist: %s", parentFolder)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("Parent folder '%s' does not exist", parentFolder),
+			})
+			return
+		}
 		fullPath = parentFolder + "/" + categoryName
 	} else {
 		fullPath = categoryName
@@ -427,12 +455,55 @@ func CategoryCreateHandler(c *gin.Context) {
 		return
 	}
 
+	// Force refresh the folder list by invalidating cache
+	if cacheable, ok := store.(interface{ InvalidateCache() error }); ok {
+		if err := cacheable.InvalidateCache(); err != nil {
+			log.Printf("Warning: Failed to invalidate cache: %v", err)
+		}
+	}
+
 	log.Printf("Successfully created category: %s", fullPath)
 	log.Println("=== CategoryCreateHandler END ===")
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": fmt.Sprintf("Category '%s' created successfully", categoryName),
+	})
+}
+
+// DeleteFolderHandler handles deleting a folder
+func DeleteFolderHandler(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Folder path is required",
+		})
+		return
+	}
+
+	log.Printf("=== DeleteFolderHandler START: %s ===", path)
+
+	// Delete the folder
+	if err := store.DeleteFolder(path); err != nil {
+		log.Printf("Error deleting folder: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to delete folder: %v", err),
+		})
+		return
+	}
+
+	// Force refresh the folder list by invalidating cache
+	if cacheable, ok := store.(interface{ InvalidateCache() error }); ok {
+		if err := cacheable.InvalidateCache(); err != nil {
+			log.Printf("Warning: Failed to invalidate cache: %v", err)
+		}
+	}
+
+	log.Printf("Successfully deleted folder: %s", path)
+	log.Printf("=== DeleteFolderHandler END ===")
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Folder '%s' deleted successfully", path),
 	})
 }
 
@@ -522,6 +593,21 @@ func CategoryHandler(c *gin.Context) {
 	// Check if at max nesting level - only if at max level
 	isMaxLevel := currentLevel >= maxLevel
 
+	// Get parent folder's SHA if this is a subfolder
+	var parentFolderSha string
+	if path != "" {
+		parentPath := getParentPath(path)
+		if parentPath != "" {
+			// Use GetPage to check if the parent folder exists and get its SHA
+			folderPath := parentPath + "/.folder"
+			page, err := store.GetPage(folderPath)
+			if err == nil && page != nil {
+				// Get the SHA from the page content
+				parentFolderSha = string(page.Content)
+			}
+		}
+	}
+
 	log.Printf("Loading folder view for %s with %d subfolders and %d notes (level: %d, max: %v, maxLevel: %d)",
 		path, len(subFolders), len(notes), currentLevel, isMaxLevel, maxLevel)
 
@@ -536,6 +622,7 @@ func CategoryHandler(c *gin.Context) {
 		"CurrentLevel":    currentLevel,
 		"MaxLevel":        maxLevel,
 		"MaxLevelReached": isMaxLevel,
+		"ParentFolderSha": parentFolderSha,
 		"User": gin.H{
 			"Name": "Admin",
 		},

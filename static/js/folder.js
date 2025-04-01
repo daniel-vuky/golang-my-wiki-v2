@@ -58,8 +58,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function createSubcategory() {
     const subcategoryName = document.getElementById('subcategory-name').value.trim();
-    const currentFolderPath = document.querySelector('meta[name="folder-path"]')?.content || '';
-    const currentFolderSha = document.querySelector('meta[name="folder-sha"]')?.content || '';
+    const currentFolderPath = window.sidebarData.folderPath;
+    const parentFolderSha = window.sidebarData.parentFolderSha;
     
     if (!subcategoryName) {
         alert('Please enter a subcategory name');
@@ -70,7 +70,7 @@ function createSubcategory() {
     const requestBody = JSON.stringify({ 
         name: subcategoryName,
         parentPath: currentFolderPath,
-        sha: currentFolderSha
+        sha: parentFolderSha
     });
     
     // Show loading overlay
@@ -106,5 +106,57 @@ function createSubcategory() {
         // Reset form and close popup
         document.getElementById('subcategory-name').value = '';
         document.getElementById('subcategory-popup').classList.remove('active');
+    });
+}
+
+// Delete folder functionality
+let folderToDelete = null;
+const deleteFolderPopup = document.getElementById('delete-folder-popup');
+const cancelDeleteFolderBtn = document.getElementById('cancel-delete-folder');
+const confirmDeleteFolderBtn = document.getElementById('confirm-delete-folder');
+
+function confirmDeleteFolder(folderPath) {
+    folderToDelete = folderPath;
+    deleteFolderPopup.classList.add('active');
+}
+
+if (cancelDeleteFolderBtn) {
+    cancelDeleteFolderBtn.addEventListener('click', () => {
+        deleteFolderPopup.classList.remove('active');
+        folderToDelete = null;
+    });
+}
+
+if (confirmDeleteFolderBtn) {
+    confirmDeleteFolderBtn.addEventListener('click', async () => {
+        if (!folderToDelete) return;
+        
+        // Show loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = loadingOverlay.querySelector('.loading-text');
+        loadingText.textContent = 'Deleting...';
+        loadingOverlay.classList.add('active');
+        
+        try {
+            const response = await fetch(`/api/folder/delete?path=${encodeURIComponent(folderToDelete)}`, {
+                method: 'DELETE',
+            });
+            
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to delete folder');
+            }
+        } catch (error) {
+            console.error('Error deleting folder:', error);
+            alert(error.message || 'An error occurred while deleting the folder. Please try again.');
+        } finally {
+            // Hide loading overlay
+            loadingOverlay.classList.remove('active');
+            loadingText.textContent = 'Loading...';
+            deleteFolderPopup.classList.remove('active');
+            folderToDelete = null;
+        }
     });
 } 

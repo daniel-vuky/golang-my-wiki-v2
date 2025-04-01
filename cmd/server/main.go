@@ -81,6 +81,7 @@ func main() {
 	router.POST("/category/create", handlers.CategoryCreateHandler)
 	router.GET("/category/*path", handlers.CategoryHandler)
 	router.GET("/api/folders/children/*path", handlers.GetFolderChildrenHandler)
+	router.DELETE("/api/folder/delete", handlers.DeleteFolderHandler)
 
 	// Auth routes
 	router.GET("/login", handlers.LoginHandler)

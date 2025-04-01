@@ -129,29 +129,49 @@
     position: relative;
 }
 
+.delete-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 12px;
+    color: #f87979;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.category-box:hover .delete-indicator {
+    opacity: 1;
+}
+
+.delete-indicator:hover {
+    color: #F44336;
+}
+
 .category-box:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     border-color: var(--accent-color);
 }
 
-.category-box.has-children::after {
-    content: '';
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 8px;
-    height: 8px;
-    background-color: var(--accent-color);
-    border-radius: 50%;
+.category-box.has-children {
+    /* Remove special styling for folders with children */
+}
+
+.category-box.has-children:hover {
+    /* Remove special hover styling for folders with children */
 }
 
 .children-indicator {
     position: absolute;
     top: 8px;
     right: 8px;
-    font-size: 8px;
+    font-size: 12px;
     color: var(--accent-color);
+    opacity: 0.8;
+}
+
+.category-box:hover .children-indicator {
+    opacity: 1;
 }
 
 .category-icon {
@@ -574,11 +594,11 @@ body.dark-theme .subtree {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.5);
     display: none;
     justify-content: center;
     align-items: center;
+    z-index: 9999;
 }
 
 .loading-overlay.active {
@@ -587,22 +607,30 @@ body.dark-theme .subtree {
 
 .loading-content {
     background-color: white;
-    padding: 30px 50px;
+    padding: 2rem;
     border-radius: 8px;
     text-align: center;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.loading-content i {
-    font-size: 40px;
-    color: #007bff;
-    margin-bottom: 15px;
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
 }
 
-.loading-content p {
-    font-size: 18px;
-    margin: 0;
-    color: #333;
+.loading-text {
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Dark theme adjustments */
