@@ -111,6 +111,7 @@
     border-bottom: 1px solid var(--border-color);
     transition: all 0.2s;
     position: relative;
+    padding-right: 160px; /* Space for buttons */
 }
 
 .wiki-list-item:last-child {
@@ -118,7 +119,7 @@
 }
 
 .wiki-list-item:hover {
-    background: rgba(3, 102, 214, 0.1);
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .wiki-list-item .row-link {
@@ -145,36 +146,55 @@
     min-width: 2rem;
 }
 
-.wiki-list-item .edit-link {
-    color: #ffffff;
-    text-decoration: none;
-    font-size: 0.9rem;
-    padding: 1rem;
-    transition: all 0.2s;
+.action-buttons {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    gap: 8px;
+}
+
+.wiki-list-item:hover .action-buttons {
     display: flex;
+}
+
+.edit-link, .delete-link {
+    display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    z-index: 2;
-}
-
-.wiki-list-item .edit-link:hover {
-    background: rgba(3, 102, 214, 0.2);
-}
-
-.wiki-list-item .delete-link {
-    color: #ffffff;
+    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 4px;
     text-decoration: none;
-    font-size: 0.9rem;
-    padding: 1rem;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    z-index: 2;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.wiki-list-item .delete-link:hover {
-    background: rgba(220, 53, 69, 0.2);
+.wiki-list-item:hover .edit-link {
+    background-color: #6ea8fe;
+}
+
+.wiki-list-item:hover .edit-link:hover {
+    background-color: #0d6efd;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.wiki-list-item:hover .delete-link {
+    background-color: #f87979;
+}
+
+.wiki-list-item:hover .delete-link:hover {
+    background-color: #F44336;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.edit-link i, .delete-link i {
+    margin-right: 4px;
 }
 
 /* Dark theme support */

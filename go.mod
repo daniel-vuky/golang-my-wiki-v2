@@ -7,8 +7,8 @@ toolchain go1.22.2
 require (
 	github.com/gin-contrib/sessions v0.0.5
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/go-github/v45 v45.2.0
-	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/viper v1.18.2
 	golang.org/x/oauth2 v0.25.0
 )
@@ -26,7 +26,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.19.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/context v1.1.2 // indirect
