@@ -51,6 +51,7 @@
             </header>
             
             <div class="content-body">
+                {{if not .MaxLevelReached}}
                 <div class="categories-section">
                     <div class="section-title">
                         <h3>Sub Categories</h3>
@@ -82,6 +83,7 @@
                     </div>
                     {{end}}
                 </div>
+                {{end}}
                 
                 <div class="notes-section">
                     <div class="section-title">

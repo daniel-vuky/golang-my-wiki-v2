@@ -197,9 +197,6 @@ func (g *GitHubStorage) CreatePage(page *types.Page) error {
 	if page.Path == "" {
 		return fmt.Errorf("page path cannot be empty")
 	}
-	if len(page.Body) == 0 {
-		return fmt.Errorf("page content cannot be empty")
-	}
 
 	// Ensure path ends with .txt
 	if !strings.HasSuffix(page.Path, ".txt") {
@@ -599,7 +596,7 @@ func (g *GitHubStorage) DeleteFolder(path string) error {
 	return nil
 }
 
-// GetPagesInFolder retrieves pages from a specific folder
+// GetPagesInFolder retrieves all pages from a specific folder
 func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
 	log.Printf("=== GetPagesInFolder START: %s ===", folderPath)
 
@@ -636,6 +633,14 @@ func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error
 	}
 
 	log.Printf("Found %d items in folder: %s", len(dirContents), folderPath)
+	for _, content := range dirContents {
+		if content == nil {
+			log.Printf("Found nil content item")
+			continue
+		}
+		log.Printf("Found item: Type=%s, Name=%s, Path=%s",
+			content.GetType(), content.GetName(), content.GetPath())
+	}
 
 	// Filter for .txt files and create Page objects
 	var pages []types.Page
@@ -647,49 +652,58 @@ func (g *GitHubStorage) GetPagesInFolder(folderPath string) ([]types.Page, error
 
 		// Check if this is a file and has a .txt extension (case insensitive)
 		fileName := *content.Name
-		if *content.Type == "file" && (strings.HasSuffix(strings.ToLower(fileName), ".txt")) {
-			log.Printf("Processing file: %s", fileName)
+		if *content.Type == "file" {
+			log.Printf("Processing file: %s (type: %s)", fileName, *content.Type)
+			if strings.HasSuffix(strings.ToLower(fileName), ".txt") {
+				log.Printf("Found .txt file: %s", fileName)
 
-			// Get the file content
-			fileContent, _, _, err := g.client.Repositories.GetContents(
-				ctx,
-				g.owner,
-				g.repository,
-				*content.Path,
-				opts,
-			)
+				// Get the file content
+				fileContent, _, _, err := g.client.Repositories.GetContents(
+					ctx,
+					g.owner,
+					g.repository,
+					*content.Path,
+					opts,
+				)
 
-			if err != nil {
-				log.Printf("Error getting file content: %v, skipping", err)
-				continue
-			}
+				if err != nil {
+					log.Printf("Error getting file content: %v, skipping", err)
+					continue
+				}
 
-			// Decode content
-			decodedContent, err := fileContent.GetContent()
-			if err != nil {
-				log.Printf("Error decoding content: %v, skipping", err)
-				continue
-			}
+				// Decode content
+				decodedContent, err := fileContent.GetContent()
+				if err != nil {
+					log.Printf("Error decoding content: %v, skipping", err)
+					continue
+				}
 
-			title := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+				// Get the title without .txt extension
+				title := strings.TrimSuffix(fileName, ".txt")
+				log.Printf("Created page with title: %s, path: %s", title, *content.Path)
 
-			// Add page to results
-			page := types.Page{
-				Title:   title,
-				Path:    *content.Path,
-				Content: decodedContent,
-				Body:    []byte(decodedContent),
-			}
+				// Add page to results
+				page := types.Page{
+					Title:   title,
+					Path:    *content.Path,
+					Content: decodedContent,
+					Body:    []byte(decodedContent),
+				}
 
-			// Add preview
-			if len(decodedContent) > 150 {
-				page.Preview = decodedContent[:150] + "..."
+				// Add preview
+				if len(decodedContent) > 150 {
+					page.Preview = decodedContent[:150] + "..."
+				} else {
+					page.Preview = decodedContent
+				}
+
+				pages = append(pages, page)
+				log.Printf("Added page: %s", title)
 			} else {
-				page.Preview = decodedContent
+				log.Printf("Skipping non-txt file: %s", fileName)
 			}
-
-			pages = append(pages, page)
-			log.Printf("Added page: %s", title)
+		} else {
+			log.Printf("Skipping non-file item: %s (type: %s)", fileName, *content.Type)
 		}
 	}
 
@@ -712,4 +726,9 @@ func (g *GitHubStorage) Owner() string {
 
 func (g *GitHubStorage) Repository() string {
 	return g.repository
+}
+
+// Sync is a no-op for GitHub storage since it doesn't need to sync with anything
+func (g *GitHubStorage) Sync() error {
+	return nil
 }

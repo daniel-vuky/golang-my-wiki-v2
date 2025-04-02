@@ -39,7 +39,6 @@ type Config struct {
 	Wiki struct {
 		MaxCategoryLevel int `mapstructure:"max_category_level"`
 	} `mapstructure:"wiki"`
-	StorageMode string `mapstructure:"storage_mode"`
 }
 
 var AppConfig Config
@@ -49,18 +48,15 @@ func LoadConfig() error {
 	viper.SetConfigName("env")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("./config")
+	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		return fmt.Errorf("error reading config file: %w", err)
+		return fmt.Errorf("failed to read config file: %v", err)
 	}
 
 	if err := viper.Unmarshal(&AppConfig); err != nil {
-		return fmt.Errorf("error unmarshaling config: %w", err)
-	}
-
-	// Set default storage mode if not specified
-	if AppConfig.StorageMode == "" {
-		AppConfig.StorageMode = "local"
+		return fmt.Errorf("failed to unmarshal config: %v", err)
 	}
 
 	// Set default Redis values if not specified

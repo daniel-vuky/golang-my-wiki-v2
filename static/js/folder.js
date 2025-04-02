@@ -159,4 +159,46 @@ if (confirmDeleteFolderBtn) {
             folderToDelete = null;
         }
     });
+}
+
+// Function to confirm note deletion
+function confirmDelete(path) {
+    if (confirm('Are you sure you want to delete this note?')) {
+        // Show loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = loadingOverlay.querySelector('.loading-text');
+        loadingText.textContent = 'Deleting note...';
+        loadingOverlay.classList.add('active');
+        
+        // Extract note title and folder path from the full path
+        const pathParts = path.split('/');
+        const noteTitle = pathParts[pathParts.length - 1];
+        const folderPath = pathParts.slice(0, -1).join('/');
+        
+        // Send delete request
+        fetch(`/delete/${noteTitle}?folder=${encodeURIComponent(folderPath)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect to the URL provided by the server
+                window.location.href = data.redirect;
+            } else {
+                throw new Error(data.error || 'Failed to delete note');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(error.message || 'Error deleting note. Please try again.');
+        })
+        .finally(() => {
+            // Hide loading overlay
+            loadingOverlay.classList.remove('active');
+            loadingText.textContent = 'Loading...';
+        });
+    }
 } 

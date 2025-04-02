@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"fmt"
-
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage/types"
 )
@@ -15,31 +13,19 @@ type Storage interface {
 	CreatePage(page *types.Page) error
 	UpdatePage(page *types.Page) error
 	DeletePage(path string) error
+	GetPagesInFolder(folderPath string) ([]types.Page, error)
 
 	// Folder operations
 	ListFolders() ([]string, error)
 	CreateFolder(path string) error
 	DeleteFolder(path string) error
+
+	// Sync operations
+	Sync() error
 }
 
-// NewStorage creates a new storage instance based on the configuration
+// NewStorage creates a new storage instance using combined local and GitHub storage
 func NewStorage(config *config.Config) (types.Storage, error) {
-	switch config.StorageMode {
-	case "github":
-		// If Redis cache is enabled, use cached GitHub storage
-		if config.Redis.Enabled {
-			return NewCachedGitHubStorage(config)
-		}
-		// Otherwise use regular GitHub storage
-		return NewGitHubStorage(config)
-	case "local":
-		// If Redis cache is enabled, use cached local storage
-		if config.Redis.Enabled {
-			return NewCachedLocalStorage(config)
-		}
-		// Otherwise use regular local storage
-		return NewLocalStorage(config)
-	default:
-		return nil, fmt.Errorf("unsupported storage mode: %s", config.StorageMode)
-	}
+	// Always use combined storage that supports both local and GitHub
+	return NewCombinedStorage(config)
 }

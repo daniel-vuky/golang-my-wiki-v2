@@ -24,4 +24,7 @@ type Storage interface {
 	ListFolders() ([]string, error)
 	CreateFolder(path string) error
 	DeleteFolder(path string) error
+
+	// Sync operations
+	Sync() error
 }

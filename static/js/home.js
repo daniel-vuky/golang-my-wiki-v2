@@ -26,10 +26,10 @@ function confirmDelete(title) {
 
 // Function to create a new category
 function createCategory() {
-    const categoryName = document.getElementById('categoryName').value.trim();
+    const categoryName = document.getElementById('category-name').value.trim();
     const saveBtn = document.getElementById('saveCategory');
     const categoryPopup = document.getElementById('categoryPopup');
-    const categoryInput = document.getElementById('categoryName');
+    const categoryInput = document.getElementById('category-name');
     
     if (!categoryName) {
         alert('Please enter a category name');
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const categoryPopup = document.getElementById('categoryPopup');
     const cancelBtn = document.getElementById('cancelCategory');
     const saveBtn = document.getElementById('saveCategory');
-    const categoryInput = document.getElementById('categoryName');
+    const categoryInput = document.getElementById('category-name');
     
     if (newCategoryBtn && categoryPopup) {
         // Open popup on button click
