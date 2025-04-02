@@ -26,6 +26,4 @@ type Config struct {
 		Repository string `yaml:"repository"`
 		Branch     string `yaml:"branch"`
 	} `yaml:"github"`
-
-	StorageMode string `yaml:"storage_mode"`
 }

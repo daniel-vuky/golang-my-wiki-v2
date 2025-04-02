@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -14,11 +15,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var store types.Storage
+var (
+	store types.Storage
+)
 
-// InitHandlers initializes the handlers with the storage instance
+// InitHandlers initializes the handlers with the given storage
 func InitHandlers(s types.Storage) {
 	store = s
+}
+
+// GetStorage returns the current storage instance
+func GetStorage() types.Storage {
+	return store
 }
 
 // HomeHandler handles the home page
@@ -66,18 +74,42 @@ func ViewHandler(c *gin.Context) {
 	title := c.Param("title")
 	log.Printf("=== ViewHandler START: %s ===", title)
 
+	// URL decode the title
+	decodedTitle, err := url.QueryUnescape(title)
+	if err != nil {
+		log.Printf("Error decoding title: %v", err)
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"error": "Invalid page title",
+		})
+		return
+	}
+
 	// Get folder parameter (if viewing from a folder)
 	folderPath := c.Query("folder")
+	if folderPath != "" {
+		// URL decode the folder path
+		decodedFolderPath, err := url.QueryUnescape(folderPath)
+		if err != nil {
+			log.Printf("Error decoding folder path: %v", err)
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": "Invalid folder path",
+			})
+			return
+		}
+		folderPath = decodedFolderPath
+	}
 
 	// If folder is specified, prepend it to the title path
 	var fullPath string
 	if folderPath != "" {
-		fullPath = folderPath + "/" + title
+		fullPath = folderPath + "/" + decodedTitle
 		log.Printf("Viewing page in folder: %s", fullPath)
 	} else {
-		fullPath = title
+		fullPath = decodedTitle
+		log.Printf("Viewing page at root: %s", fullPath)
 	}
 
+	// Try to get the page
 	page, err := store.GetPage(fullPath)
 	if err != nil {
 		log.Printf("Error getting page: %v", err)
@@ -139,8 +171,30 @@ func EditHandler(c *gin.Context) {
 	title := c.Param("title")
 	log.Printf("=== EditHandler START: %s ===", title)
 
+	// URL decode the title
+	decodedTitle, err := url.QueryUnescape(title)
+	if err != nil {
+		log.Printf("Error decoding title: %v", err)
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"error": "Invalid page title",
+		})
+		return
+	}
+
 	// Get folder parameter (if creating from a folder)
 	folderPath := c.Query("folder")
+	if folderPath != "" {
+		// URL decode the folder path
+		decodedFolderPath, err := url.QueryUnescape(folderPath)
+		if err != nil {
+			log.Printf("Error decoding folder path: %v", err)
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": "Invalid folder path",
+			})
+			return
+		}
+		folderPath = decodedFolderPath
+	}
 	log.Printf("Folder path from query: %s", folderPath)
 
 	// Get the folder tree to use in the sidebar
@@ -175,7 +229,7 @@ func EditHandler(c *gin.Context) {
 	}
 
 	// Handle new page creation
-	if title == "" || title == "new" {
+	if decodedTitle == "" || decodedTitle == "new" {
 		log.Printf("Creating new page form")
 		c.HTML(http.StatusOK, "edit.html", gin.H{
 			"Title":       "",
@@ -192,15 +246,15 @@ func EditHandler(c *gin.Context) {
 	}
 
 	// Editing an existing page - GetPage will handle adding .txt
-	log.Printf("Attempting to edit page: %s", title)
+	log.Printf("Attempting to edit page: %s", decodedTitle)
 
 	// If folder is specified, prepend it to the title path
 	var fullPath string
 	if folderPath != "" {
-		fullPath = folderPath + "/" + title
+		fullPath = folderPath + "/" + decodedTitle
 		log.Printf("Editing page in folder: %s", fullPath)
 	} else {
-		fullPath = title
+		fullPath = decodedTitle
 	}
 
 	page, err := store.GetPage(fullPath)
@@ -231,24 +285,36 @@ func EditHandler(c *gin.Context) {
 func SaveHandler(c *gin.Context) {
 	log.Println("=== SaveHandler START ===")
 
-	title := c.PostForm("title")
-	log.Printf("Title from form: %s", title)
+	// Parse JSON request body
+	var requestBody struct {
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		Folder   string `json:"folder"`
+		OldTitle string `json:"oldTitle"` // Add oldTitle to track title changes
+	}
 
-	content := c.PostForm("content")
-	log.Printf("Content from form: %s", content)
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		log.Printf("Error binding JSON: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Failed to parse request: %v", err),
+		})
+		return
+	}
 
-	// Get the original title (before edit)
-	originalTitle := c.PostForm("original_title")
-	log.Printf("Original title: %s", originalTitle)
+	title := requestBody.Title
+	content := requestBody.Content
+	folderPath := requestBody.Folder
+	oldTitle := requestBody.OldTitle
 
-	// Get the folder path if present
-	folderPath := c.PostForm("folder_path")
-	log.Printf("Folder path from form: %s", folderPath)
+	log.Printf("Title from JSON: %s", title)
+	log.Printf("Old title from JSON: %s", oldTitle)
+	log.Printf("Content from JSON: %s", content)
+	log.Printf("Folder from JSON: %s", folderPath)
 
-	if title == "" || content == "" {
-		log.Println("Error: Title or content is empty")
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": "Title and content are required",
+	if title == "" {
+		log.Println("Error: Title is empty")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Title is required",
 		})
 		return
 	}
@@ -256,13 +322,11 @@ func SaveHandler(c *gin.Context) {
 	// Determine the full path based on folder
 	var filePath string
 	if folderPath != "" {
-		// If folder path is provided, create the page in that folder
-		filePath = folderPath + "/" + title + ".txt"
-		log.Printf("Creating page in folder: %s", filePath)
+		filePath = folderPath + "/" + title
+		log.Printf("Creating/updating page in folder: %s", filePath)
 	} else {
-		// Otherwise, create at root level
-		filePath = title + ".txt"
-		log.Printf("Creating page at root: %s", filePath)
+		filePath = title
+		log.Printf("Creating/updating page at root: %s", filePath)
 	}
 
 	// Create a page object with the new title and path
@@ -273,49 +337,60 @@ func SaveHandler(c *gin.Context) {
 		Body:    []byte(content),
 	}
 
-	// If we're editing an existing page and the title has changed
-	if originalTitle != "" && originalTitle != title {
-		log.Printf("Title changed from %s to %s, creating new file and deleting old one", originalTitle, title)
-
-		// Create new file with new title
-		if err := store.CreatePage(page); err != nil {
-			log.Printf("Error creating new page: %v", err)
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"error": fmt.Sprintf("Failed to create new page: %v", err),
-			})
-			return
-		}
-		log.Printf("Successfully created new page: %s", title)
-
-		// Delete old file with old title
-		oldFilePath := originalTitle
+	// If we have an old title, try to get the old page first
+	if oldTitle != "" {
+		var oldFilePath string
 		if folderPath != "" {
-			oldFilePath = folderPath + "/" + originalTitle
-		}
-		// Add .txt extension if not present
-		if !strings.HasSuffix(oldFilePath, ".txt") {
-			oldFilePath = oldFilePath + ".txt"
-		}
-		log.Printf("Attempting to delete old file: %s", oldFilePath)
-		if err := store.DeletePage(oldFilePath); err != nil {
-			log.Printf("Warning: Failed to delete old page %s: %v", oldFilePath, err)
-			// Continue even if delete fails
+			oldFilePath = folderPath + "/" + oldTitle
 		} else {
-			log.Printf("Successfully deleted old page: %s", oldFilePath)
+			oldFilePath = oldTitle
 		}
-	} else {
-		// Normal save without title change
-		// Check if the page exists
-		log.Printf("No title change detected, checking if page exists: %s", filePath)
-		existingPage, err := store.GetPage(filePath) // Use filePath instead of title to include folder path
+		log.Printf("Checking for old page at: %s", oldFilePath)
 
-		if err != nil {
-			// Page doesn't exist, create it
-			log.Printf("Page %s does not exist, creating new page", filePath)
+		oldPage, err := store.GetPage(oldFilePath)
+		if err == nil {
+			// Old page exists, delete it first
+			log.Printf("Found old page, deleting: %s", oldFilePath)
+			if err := store.DeletePage(oldPage.Path); err != nil {
+				log.Printf("Error deleting old page: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": fmt.Sprintf("Failed to delete old page: %v", err),
+				})
+				return
+			}
+			log.Printf("Successfully deleted old page: %s", oldFilePath)
 
+			// Now create the new page
+			log.Printf("Creating new page: %s", filePath)
+			if err := store.CreatePage(page); err != nil {
+				log.Printf("Error creating new page: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": fmt.Sprintf("Failed to create new page: %v", err),
+				})
+				return
+			}
+			log.Printf("Successfully created new page: %s", filePath)
+		} else {
+			// Old page doesn't exist, create new one
+			log.Printf("Old page not found, creating new page: %s", filePath)
 			if err := store.CreatePage(page); err != nil {
 				log.Printf("Error creating page: %v", err)
-				c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": fmt.Sprintf("Failed to create page: %v", err),
+				})
+				return
+			}
+			log.Printf("Successfully created new page: %s", filePath)
+		}
+	} else {
+		// No old title, check if page exists at new path
+		_, err := store.GetPage(filePath)
+		if err != nil {
+			// Page doesn't exist, create it
+			log.Printf("Page doesn't exist, creating new page: %s", filePath)
+			if err := store.CreatePage(page); err != nil {
+				log.Printf("Error creating page: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to create page: %v", err),
 				})
 				return
@@ -323,12 +398,10 @@ func SaveHandler(c *gin.Context) {
 			log.Printf("Successfully created new page: %s", filePath)
 		} else {
 			// Page exists, update it
-			log.Printf("Page %s exists, updating content", filePath)
-			page.LastModified = existingPage.LastModified
-
+			log.Printf("Page exists, updating: %s", filePath)
 			if err := store.UpdatePage(page); err != nil {
 				log.Printf("Error updating page: %v", err)
-				c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Failed to update page: %v", err),
 				})
 				return
@@ -339,11 +412,13 @@ func SaveHandler(c *gin.Context) {
 
 	log.Println("=== SaveHandler END ===")
 	// Include folder path in redirect URL if present
-	redirectURL := "/view/" + title
+	redirectURL := "/view/" + url.QueryEscape(title)
 	if folderPath != "" {
-		redirectURL += "?folder=" + folderPath
+		redirectURL += "?folder=" + url.QueryEscape(folderPath)
 	}
-	c.Redirect(http.StatusFound, redirectURL)
+	c.JSON(http.StatusOK, gin.H{
+		"redirect": redirectURL,
+	})
 }
 
 // DeleteHandler handles deleting a page
@@ -351,20 +426,54 @@ func DeleteHandler(c *gin.Context) {
 	title := c.Param("title")
 	log.Printf("=== DeleteHandler START: %s ===", title)
 
-	// No need to add .txt here, the storage will handle it
-	log.Printf("Attempting to delete page: %s", title)
+	// Get folder parameter (if deleting from a folder)
+	folderPath := c.Query("folder")
+	if folderPath != "" {
+		// URL decode the folder path
+		decodedFolderPath, err := url.QueryUnescape(folderPath)
+		if err != nil {
+			log.Printf("Error decoding folder path: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid folder path",
+			})
+			return
+		}
+		folderPath = decodedFolderPath
+	}
 
-	if err := store.DeletePage(title); err != nil {
+	// If folder is specified, prepend it to the title path
+	var fullPath string
+	if folderPath != "" {
+		fullPath = folderPath + "/" + title
+		log.Printf("Deleting page in folder: %s", fullPath)
+	} else {
+		fullPath = title
+		log.Printf("Deleting page at root: %s", fullPath)
+	}
+
+	if err := store.DeletePage(fullPath); err != nil {
 		log.Printf("Error deleting page: %v", err)
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": fmt.Sprintf("Failed to delete page: %v", err),
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to delete page: %v", err),
 		})
 		return
 	}
 
-	log.Printf("Successfully deleted page: %s", title)
+	log.Printf("Successfully deleted page: %s", fullPath)
 	log.Printf("=== DeleteHandler END: %s ===", title)
-	c.Redirect(http.StatusFound, "/")
+
+	// Return success response with redirect URL
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"redirect": func() string {
+			if folderPath != "" {
+				return "/category/" + url.QueryEscape(folderPath)
+			}
+			return "/"
+		}(),
+	})
 }
 
 // CategoryCreateHandler handles creating a new category
@@ -492,6 +601,13 @@ func DeleteFolderHandler(c *gin.Context) {
 
 	log.Printf("=== DeleteFolderHandler START: %s ===", path)
 
+	// Get parent folder path for redirect before deleting
+	parentPath := getParentPath(path)
+	redirectURL := "/"
+	if parentPath != "" {
+		redirectURL = "/category/" + url.QueryEscape(parentPath)
+	}
+
 	// Delete the folder
 	if err := store.DeleteFolder(path); err != nil {
 		log.Printf("Error deleting folder: %v", err)
@@ -510,9 +626,12 @@ func DeleteFolderHandler(c *gin.Context) {
 
 	log.Printf("Successfully deleted folder: %s", path)
 	log.Printf("=== DeleteFolderHandler END ===")
+
+	// Return success response with redirect URL
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": fmt.Sprintf("Folder '%s' deleted successfully", path),
+		"success":  true,
+		"message":  fmt.Sprintf("Folder '%s' deleted successfully", path),
+		"redirect": redirectURL,
 	})
 }
 
@@ -566,6 +685,11 @@ func CategoryHandler(c *gin.Context) {
 			"error": fmt.Sprintf("Failed to get pages in folder: %v", err),
 		})
 		return
+	}
+
+	log.Printf("Found %d notes in folder %s", len(notes), path)
+	for _, note := range notes {
+		log.Printf("Note: %s, Path: %s", note.Title, note.Path)
 	}
 
 	// Get all folders
@@ -718,12 +842,27 @@ func hasChildren(folders []string, path string) bool {
 		}
 	}
 
-	log.Printf("No subfolder children found for '%s'", path)
+	// For final level folders (no subfolders), check for notes
+	notes, err := store.GetPagesInFolder(path)
+	if err != nil {
+		log.Printf("Error checking for notes in folder '%s': %v", path, err)
+		return false
+	}
+	if len(notes) > 0 {
+		log.Printf("Found %d notes in folder '%s':", len(notes), path)
+		for _, note := range notes {
+			log.Printf("  - %s", note.Title)
+		}
+		return true
+	}
+
+	log.Printf("No children (folders or notes) found for '%s'", path)
 	return false
 }
 
 // Check if a folder might have notes - this will be used in GetFolderChildrenHandler
 func hasNotes(path string, store types.Storage) bool {
+	log.Printf("Checking if folder '%s' has notes...", path)
 	notes, err := store.GetPagesInFolder(path)
 	if err != nil {
 		log.Printf("Error checking for notes in folder '%s': %v", path, err)
@@ -731,7 +870,12 @@ func hasNotes(path string, store types.Storage) bool {
 	}
 	hasNotes := len(notes) > 0
 	if hasNotes {
-		log.Printf("Found %d notes in folder '%s'", len(notes), path)
+		log.Printf("Found %d notes in folder '%s':", len(notes), path)
+		for _, note := range notes {
+			log.Printf("  - %s", note.Title)
+		}
+	} else {
+		log.Printf("No notes found in folder '%s'", path)
 	}
 	return hasNotes
 }
@@ -745,10 +889,22 @@ func getDirectChildren(folders []string, parentPath string) []FolderTreeItem {
 	for _, folder := range folders {
 		// Only get direct children (parent/child), not deeper descendants (parent/child/grandchild)
 		if getParentPath(folder) == parentPath {
+			// Check if folder has subfolder children
+			hasSubfolders := hasChildren(folders, folder)
+
+			// Check if folder has note children
+			hasNotes := hasNotes(folder, store)
+
+			// A folder has children if it has either subfolders or notes
+			hasAnyChildren := hasSubfolders || hasNotes
+
+			log.Printf("Folder '%s' has subfolders: %v, has notes: %v, has any children: %v",
+				folder, hasSubfolders, hasNotes, hasAnyChildren)
+
 			children = append(children, FolderTreeItem{
 				Name:        getNameFromPath(folder),
 				Path:        folder,
-				HasChildren: hasChildren(folders, folder),
+				HasChildren: hasAnyChildren,
 				IsNote:      false, // This is a folder
 			})
 		}
@@ -793,6 +949,25 @@ func GetFolderTree(store storage.Storage, currentPath string) ([]FolderTreeItem,
 	// Get root folders (those without a parent)
 	var rootItems []FolderTreeItem
 
+	// First, add root-level notes
+	rootNotes, err := store.GetPagesInFolder("")
+	if err != nil {
+		log.Printf("Error getting root notes: %v", err)
+	} else {
+		for _, note := range rootNotes {
+			noteItem := FolderTreeItem{
+				Name:        note.Title,
+				Path:        note.Path,
+				HasChildren: false,
+				IsExpanded:  false,
+				Children:    []FolderTreeItem{},
+				IsNote:      true,
+			}
+			rootItems = append(rootItems, noteItem)
+		}
+	}
+
+	// Then add root folders
 	for _, folder := range allFolders {
 		parts := strings.Split(folder, "/")
 		if len(parts) == 1 {
@@ -807,17 +982,27 @@ func GetFolderTree(store storage.Storage, currentPath string) ([]FolderTreeItem,
 				Name:        name,
 				Path:        folder,
 				HasChildren: hasChildrenVal,
-				IsExpanded:  false, // Always collapsed by default, even for current folder
+				IsExpanded:  isParentOf(folder, currentPath),
 				Children:    []FolderTreeItem{},
-				IsNote:      false, // This is a folder
+				IsNote:      false,
+			}
+
+			// If this folder is expanded, get its children
+			if item.IsExpanded {
+				item.Children = buildFolderSubtree(allFolders, folder, currentPath)
 			}
 
 			rootItems = append(rootItems, item)
 		}
 	}
 
-	// Sort root items alphabetically
+	// Sort root items alphabetically - folders first, then notes
 	sort.Slice(rootItems, func(i, j int) bool {
+		// If one is a folder and one is a note, folder comes first
+		if rootItems[i].IsNote != rootItems[j].IsNote {
+			return !rootItems[i].IsNote
+		}
+		// Otherwise sort alphabetically
 		return strings.ToLower(rootItems[i].Name) < strings.ToLower(rootItems[j].Name)
 	})
 
@@ -908,4 +1093,33 @@ func GetFolderChildrenHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"children": children,
 	})
+}
+
+// HandleSync handles the sync operation between local and GitHub storage
+func HandleSync(c *gin.Context) {
+	if c.Request.Method != http.MethodPost {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed"})
+		return
+	}
+
+	store := GetStorage()
+	if store == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Storage not initialized"})
+		return
+	}
+
+	// Check if storage is CombinedStorage
+	combinedStore, ok := store.(*storage.CombinedStorage)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Storage is not configured for sync"})
+		return
+	}
+
+	err := combinedStore.Sync()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Sync completed successfully"})
 }

@@ -18,9 +18,9 @@
                         <a href="/logout" class="logout-btn">Logout</a>
                     </div>
                     <div class="header-actions">
-                        <a href="/category/new" class="add-category-btn">
+                        <button id="newCategoryBtn" class="add-category-btn">
                             <i class="fas fa-folder-plus"></i> New Category
-                        </a>
+                        </button>
                         <a href="/new" class="add-note-btn">
                             <i class="fas fa-plus"></i> New Note
                         </a>
@@ -57,7 +57,7 @@
     </button>
     
     <!-- Category Popup -->
-    <div id="category-popup" class="popup-overlay">
+    <div id="categoryPopup" class="popup-overlay">
         <div class="popup-content">
             <h3>Create New Category</h3>
             <div class="popup-form">
@@ -66,8 +66,8 @@
                     <input type="text" id="category-name" placeholder="Enter category name">
                 </div>
                 <div class="popup-actions">
-                    <button id="cancel-category" class="btn-cancel">Cancel</button>
-                    <button id="save-category" class="btn-save">Save</button>
+                    <button id="cancelCategory" class="btn-cancel">Cancel</button>
+                    <button id="saveCategory" class="btn-save">Save</button>
                 </div>
             </div>
         </div>

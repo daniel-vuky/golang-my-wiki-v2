@@ -29,10 +29,8 @@ func main() {
 	}
 
 	// Create data directory if it doesn't exist
-	if cfg.StorageMode == "local" {
-		if err := os.MkdirAll(cfg.Server.DataDir, 0755); err != nil {
-			log.Fatalf("Failed to create data directory: %v", err)
-		}
+	if err := os.MkdirAll(cfg.Server.DataDir, 0755); err != nil {
+		log.Fatalf("Failed to create data directory: %v", err)
 	}
 
 	// Initialize Gin router
@@ -82,6 +80,9 @@ func main() {
 	router.GET("/category/*path", handlers.CategoryHandler)
 	router.GET("/api/folders/children/*path", handlers.GetFolderChildrenHandler)
 	router.DELETE("/api/folder/delete", handlers.DeleteFolderHandler)
+
+	// Sync route
+	router.POST("/api/sync", handlers.HandleSync)
 
 	// Auth routes
 	router.GET("/login", handlers.LoginHandler)

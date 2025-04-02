@@ -47,10 +47,16 @@
                     <a href="/category/{{.FolderPath}}?refresh=true" class="button info" id="refreshButton">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </a>
+                    {{if and (not .SubFolders) (not .Notes)}}
+                    <button onclick="confirmDeleteFolder('{{.FolderPath}}')" class="button danger">
+                        <i class="fas fa-trash"></i> Delete Folder
+                    </button>
+                    {{end}}
                 </div>
             </header>
             
             <div class="content-body">
+                {{if not .MaxLevelReached}}
                 <div class="categories-section">
                     <div class="section-title">
                         <h3>Sub Categories</h3>
@@ -82,6 +88,7 @@
                     </div>
                     {{end}}
                 </div>
+                {{end}}
                 
                 <div class="notes-section">
                     <div class="section-title">

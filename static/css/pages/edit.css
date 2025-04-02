@@ -433,4 +433,78 @@ body.dark-theme .editor-content {
 .preview-content pre code {
     background: none;
     padding: 0;
+}
+
+/* Form validation styles */
+.form-control.invalid {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
+.form-control.invalid::placeholder {
+    color: #dc3545;
+}
+
+.CodeMirror.invalid {
+    border: 1px solid #dc3545;
+}
+
+.CodeMirror.invalid .CodeMirror-gutters {
+    border-right: 1px solid #dc3545;
+}
+
+.field-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification.error {
+    background: #fff8f8;
+    border-left: 4px solid #dc3545;
+    color: #dc3545;
+}
+
+.notification.success {
+    background: #f8fff8;
+    border-left: 4px solid #28a745;
+    color: #28a745;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.button.primary.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #ccc;
+}
+
+.button.primary.disabled:hover {
+    background-color: #ccc;
+    transform: none;
 } 

@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +52,11 @@ func (l *LocalStorage) ListPages() ([]types.Page, error) {
 
 // GetPage retrieves a specific page from the local filesystem
 func (l *LocalStorage) GetPage(path string) (*types.Page, error) {
+	// Ensure path ends with .txt
+	if !strings.HasSuffix(path, ".txt") {
+		path = path + ".txt"
+	}
+
 	fullPath := filepath.Join(l.baseDir, path)
 	content, err := ioutil.ReadFile(fullPath)
 	if err != nil {
@@ -68,6 +74,18 @@ func (l *LocalStorage) GetPage(path string) (*types.Page, error) {
 
 // CreatePage creates a new page in the local filesystem
 func (l *LocalStorage) CreatePage(page *types.Page) error {
+	if page == nil {
+		return fmt.Errorf("page cannot be nil")
+	}
+	if page.Path == "" {
+		return fmt.Errorf("page path cannot be empty")
+	}
+
+	// Ensure path ends with .txt
+	if !strings.HasSuffix(page.Path, ".txt") {
+		page.Path = page.Path + ".txt"
+	}
+
 	fullPath := filepath.Join(l.baseDir, page.Path)
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -88,6 +106,11 @@ func (l *LocalStorage) UpdatePage(page *types.Page) error {
 
 // DeletePage deletes a page from the local filesystem
 func (l *LocalStorage) DeletePage(path string) error {
+	// Ensure path ends with .txt
+	if !strings.HasSuffix(path, ".txt") {
+		path = path + ".txt"
+	}
+
 	fullPath := filepath.Join(l.baseDir, path)
 	if err := os.Remove(fullPath); err != nil {
 		return fmt.Errorf("failed to delete page: %v", err)
@@ -137,21 +160,27 @@ func (l *LocalStorage) DeleteFolder(path string) error {
 
 // GetPagesInFolder retrieves all pages from a specific folder
 func (l *LocalStorage) GetPagesInFolder(folderPath string) ([]types.Page, error) {
+	log.Printf("=== GetPagesInFolder START: %s ===", folderPath)
 	var pages []types.Page
 	fullPath := filepath.Join(l.baseDir, folderPath)
+	log.Printf("Looking for pages in full path: %s", fullPath)
 
 	// Read all files in the directory
 	files, err := ioutil.ReadDir(fullPath)
 	if err != nil {
+		log.Printf("Error reading directory: %v", err)
 		return nil, fmt.Errorf("failed to read folder: %v", err)
 	}
 
-	// Filter for .txt files and create Page objects
+	log.Printf("Found %d files in directory", len(files))
 	for _, file := range files {
+		log.Printf("Checking file: %s (isDir: %v)", file.Name(), file.IsDir())
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".txt") {
+			log.Printf("Found .txt file: %s", file.Name())
 			relativePath := filepath.Join(folderPath, file.Name())
 			page, err := l.GetPage(relativePath)
 			if err != nil {
+				log.Printf("Error reading page %s: %v, skipping", file.Name(), err)
 				continue // Skip files that can't be read
 			}
 
@@ -164,8 +193,17 @@ func (l *LocalStorage) GetPagesInFolder(folderPath string) ([]types.Page, error)
 			}
 
 			pages = append(pages, *page)
+			log.Printf("Added page: %s", page.Title)
+		} else {
+			log.Printf("Skipping file: %s (not a .txt file or is a directory)", file.Name())
 		}
 	}
 
+	log.Printf("=== GetPagesInFolder END: %s, found %d pages ===", folderPath, len(pages))
 	return pages, nil
+}
+
+// Sync is a no-op for local storage since it doesn't need to sync with anything
+func (l *LocalStorage) Sync() error {
+	return nil
 }

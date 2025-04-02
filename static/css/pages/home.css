@@ -60,17 +60,18 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--accent-color);
-    color: white;
+    padding: 0.6rem 1.2rem;
     border-radius: 4px;
     text-decoration: none;
     font-size: 0.9rem;
+    cursor: pointer;
+    background: var(--accent-color);
+    color: white;
     transition: all 0.2s;
 }
 
 .add-note-btn:hover {
-    background: #0056b3;
+    background: var(--accent-hover);
     transform: translateY(-1px);
 }
 
@@ -78,12 +79,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: #28a745;
-    color: white;
+    padding: 0.6rem 1.2rem;
     border-radius: 4px;
     text-decoration: none;
     font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    background: #28a745;
+    color: white;
     transition: all 0.2s;
 }
 
@@ -294,7 +297,7 @@ body.dark-theme .empty-wiki-message p {
     }
 }
 
-/* Category Popup */
+/* Popup Overlay */
 .popup-overlay {
     position: fixed;
     top: 0;
@@ -302,41 +305,30 @@ body.dark-theme .empty-wiki-message p {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .popup-overlay.active {
-    opacity: 1;
-    visibility: visible;
+    display: flex;
 }
 
 .popup-content {
     background-color: var(--bg-primary);
-    border-radius: 8px;
     padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 450px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    transform: translateY(-20px);
-    transition: transform 0.3s ease;
-}
-
-.popup-overlay.active .popup-content {
-    transform: translateY(0);
+    max-width: 500px;
+    position: relative;
 }
 
 .popup-content h3 {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin: 0 0 1.5rem 0;
     color: var(--text-primary);
-    font-size: 1.4rem;
-    font-weight: 600;
+    font-size: 1.5rem;
 }
 
 .popup-form .form-group {
@@ -347,25 +339,23 @@ body.dark-theme .empty-wiki-message p {
     display: block;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
-    font-size: 0.9rem;
     font-weight: 500;
 }
 
 .popup-form input[type="text"] {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
+    font-size: 1rem;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
-    font-size: 1rem;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .popup-form input[type="text"]:focus {
-    border-color: var(--accent-color);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .popup-actions {
@@ -375,12 +365,12 @@ body.dark-theme .empty-wiki-message p {
 }
 
 .btn-cancel, .btn-save {
-    padding: 0.6rem 1.2rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 4px;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
     border: none;
 }
 
@@ -390,7 +380,7 @@ body.dark-theme .empty-wiki-message p {
 }
 
 .btn-cancel:hover {
-    background-color: #e2e6ea;
+    background-color: var(--border-color);
 }
 
 .btn-save {
@@ -399,29 +389,28 @@ body.dark-theme .empty-wiki-message p {
 }
 
 .btn-save:hover {
-    background-color: #0056b3;
+    background-color: var(--accent-hover);
     transform: translateY(-1px);
 }
 
 /* Dark theme support for popup */
 body.dark-theme .popup-content {
     background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
 }
 
 body.dark-theme .popup-form input[type="text"] {
-    background-color: #2a2d31;
-    border-color: #3a3f44;
-    color: #e9ecef;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 body.dark-theme .btn-cancel {
-    background-color: #3a3f44;
-    color: #e9ecef;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 body.dark-theme .btn-cancel:hover {
-    background-color: #4a4f54;
+    background-color: var(--border-color);
 }
 
 /* Section Title */

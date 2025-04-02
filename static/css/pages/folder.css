@@ -87,6 +87,16 @@
     pointer-events: none;
 }
 
+.button.danger {
+    background: #dc3545;
+    color: white;
+}
+
+.button.danger:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
 /* Content Body */
 .content-body {
     display: flex;
@@ -154,11 +164,18 @@
 }
 
 .category-box.has-children {
-    /* Remove special styling for folders with children */
+    border: 2px solid var(--accent-color);
+    background-color: var(--bg-secondary);
 }
 
 .category-box.has-children:hover {
-    /* Remove special hover styling for folders with children */
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-color);
+}
+
+.category-box.has-children .delete-indicator {
+    display: none;
 }
 
 .children-indicator {

@@ -8,6 +8,52 @@ function setupTreeExpandCollapse() {
     });
 }
 
+// Sync functionality
+function setupSyncButton() {
+    const syncBtn = document.getElementById('sync-btn');
+    if (!syncBtn) return;
+
+    syncBtn.addEventListener('click', async () => {
+        // Disable button and show syncing state
+        syncBtn.disabled = true;
+        syncBtn.classList.add('syncing');
+        syncBtn.innerHTML = '<i class="fas fa-sync"></i> Syncing...';
+
+        try {
+            const response = await fetch('/api/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Sync failed');
+            }
+
+            // Show success state
+            syncBtn.innerHTML = '<i class="fas fa-check"></i> Sync Complete';
+            setTimeout(() => {
+                syncBtn.innerHTML = '<i class="fas fa-sync"></i> Sync with GitHub';
+            }, 2000);
+
+            // Reload the page to show updated content
+            window.location.reload();
+        } catch (error) {
+            console.error('Sync error:', error);
+            // Show error state
+            syncBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Sync Failed';
+            setTimeout(() => {
+                syncBtn.innerHTML = '<i class="fas fa-sync"></i> Sync with GitHub';
+            }, 2000);
+        } finally {
+            // Re-enable button and remove syncing state
+            syncBtn.disabled = false;
+            syncBtn.classList.remove('syncing');
+        }
+    });
+}
+
 function handleExpandCollapse(event) {
     event.stopPropagation(); // Prevent bubbling
     
@@ -253,6 +299,9 @@ function highlightCurrentNote(noteTitle, folderPath) {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize tree expand/collapse
     setupTreeExpandCollapse();
+    
+    // Initialize sync button
+    setupSyncButton();
     
     // Auto-expand path to current folder/note
     const folderPath = window.sidebarData.folderPath;

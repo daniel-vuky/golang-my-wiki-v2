@@ -10,8 +10,18 @@ function confirmDelete() {
         const pathParts = window.location.pathname.split('/');
         const title = pathParts[pathParts.length - 1];
         
+        // Get the folder path from the URL query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const folderPath = urlParams.get('folder');
+        
+        // Construct the delete URL with folder parameter if present
+        let deleteUrl = `/delete/${title}`;
+        if (folderPath) {
+            deleteUrl += `?folder=${encodeURIComponent(folderPath)}`;
+        }
+        
         // Send delete request
-        fetch(`/delete/${title}`, {
+        fetch(deleteUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -25,8 +35,8 @@ function confirmDelete() {
         })
         .then(data => {
             if (data.success) {
-                // Redirect to home page
-                window.location.href = '/';
+                // Redirect to the URL provided by the server
+                window.location.href = data.redirect;
             } else {
                 throw new Error(data.error || 'Failed to delete note');
             }
