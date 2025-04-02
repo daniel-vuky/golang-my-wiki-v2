@@ -601,6 +601,13 @@ func DeleteFolderHandler(c *gin.Context) {
 
 	log.Printf("=== DeleteFolderHandler START: %s ===", path)
 
+	// Get parent folder path for redirect before deleting
+	parentPath := getParentPath(path)
+	redirectURL := "/"
+	if parentPath != "" {
+		redirectURL = "/category/" + url.QueryEscape(parentPath)
+	}
+
 	// Delete the folder
 	if err := store.DeleteFolder(path); err != nil {
 		log.Printf("Error deleting folder: %v", err)
@@ -619,9 +626,12 @@ func DeleteFolderHandler(c *gin.Context) {
 
 	log.Printf("Successfully deleted folder: %s", path)
 	log.Printf("=== DeleteFolderHandler END ===")
+
+	// Return success response with redirect URL
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": fmt.Sprintf("Folder '%s' deleted successfully", path),
+		"success":  true,
+		"message":  fmt.Sprintf("Folder '%s' deleted successfully", path),
+		"redirect": redirectURL,
 	})
 }
 

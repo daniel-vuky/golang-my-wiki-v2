@@ -87,6 +87,16 @@
     pointer-events: none;
 }
 
+.button.danger {
+    background: #dc3545;
+    color: white;
+}
+
+.button.danger:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
 /* Content Body */
 .content-body {
     display: flex;

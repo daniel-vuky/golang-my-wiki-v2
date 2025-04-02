@@ -142,17 +142,23 @@ if (confirmDeleteFolderBtn) {
                 method: 'DELETE',
             });
             
+            const data = await response.json();
             if (response.ok) {
-                window.location.reload();
+                // Hide loading overlay before redirect
+                loadingOverlay.classList.remove('active');
+                loadingText.textContent = 'Loading...';
+                deleteFolderPopup.classList.remove('active');
+                folderToDelete = null;
+                
+                // Redirect to the URL provided by the server
+                window.location.replace(data.redirect);
             } else {
-                const data = await response.json();
                 throw new Error(data.error || 'Failed to delete folder');
             }
         } catch (error) {
             console.error('Error deleting folder:', error);
             alert(error.message || 'An error occurred while deleting the folder. Please try again.');
-        } finally {
-            // Hide loading overlay
+            // Hide loading overlay on error
             loadingOverlay.classList.remove('active');
             loadingText.textContent = 'Loading...';
             deleteFolderPopup.classList.remove('active');
