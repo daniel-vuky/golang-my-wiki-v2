@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/gin-contrib/sessions"
@@ -84,6 +86,10 @@ func (h *Handler) Callback(c *gin.Context) {
 		return
 	}
 
+	// Clear the state after verification
+	session.Delete("oauth_state")
+	session.Save()
+
 	// Get the OAuth2 config
 	oauthConfig := h.getOAuthConfig()
 
@@ -137,11 +143,21 @@ func (h *Handler) Callback(c *gin.Context) {
 		return
 	}
 
-	// Set session with email
+	// Clear any existing session data
+	session.Clear()
+
+	// Set new session data
 	session.Set("user_email", userInfo.Email)
 	session.Set("user_name", userInfo.Name)
 	session.Set("user_picture", userInfo.Picture)
-	session.Save()
+	session.Set("last_activity", time.Now().Unix()) // Store as Unix timestamp
+
+	// Save the session
+	if err := session.Save(); err != nil {
+		log.Printf("Error saving session: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+		return
+	}
 
 	c.Redirect(http.StatusTemporaryRedirect, "/")
 }
