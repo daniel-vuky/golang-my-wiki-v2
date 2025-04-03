@@ -47,7 +47,7 @@ func main() {
 		SameSite: http.SameSiteLaxMode,
 		Domain:   "", // Empty domain to ensure cookie is only sent to the exact domain
 	})
-	log.Printf("Initializing session store with MaxAge: 3600 seconds, Secure: %v", cfg.Session.Secure)
+	log.Printf("Initializing session store with MaxAge: 3600 seconds (1 hour), Secure: %v", cfg.Session.Secure)
 	router.Use(sessions.Sessions("wiki_session", sessionStore))
 
 	// Set up template functions
