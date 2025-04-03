@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
@@ -38,6 +39,14 @@ func main() {
 
 	// Set up session middleware
 	sessionStore := cookie.NewStore([]byte(cfg.Session.Secret))
+	sessionStore.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   3600, // 1 hour
+		HttpOnly: true,
+		Secure:   cfg.Session.Secure, // Use secure cookies in production
+		SameSite: http.SameSiteLaxMode,
+	})
+	log.Printf("Initializing session store with MaxAge: 3600 seconds, Secure: %v", cfg.Session.Secure)
 	router.Use(sessions.Sessions("wiki_session", sessionStore))
 
 	// Set up template functions
@@ -63,32 +72,33 @@ func main() {
 	// Initialize auth handlers
 	handlers.InitAuthHandlers(cfg)
 
-	// Add auth middleware
-	router.Use(middleware.AuthMiddleware())
-
-	// Public routes
-	router.GET("/", handlers.HomeHandler)
-	router.GET("/view/:title", handlers.ViewHandler)
-	router.GET("/edit/:title", handlers.EditHandler)
-	router.GET("/new", handlers.EditHandler)
-	router.POST("/save", handlers.SaveHandler)
-	router.POST("/delete/:title", handlers.DeleteHandler)
-	router.GET("/delete/:title", handlers.DeleteHandler)
-
-	// Category routes
-	router.POST("/category/create", handlers.CategoryCreateHandler)
-	router.GET("/category/*path", handlers.CategoryHandler)
-	router.GET("/api/folders/children/*path", handlers.GetFolderChildrenHandler)
-	router.DELETE("/api/folder/delete", handlers.DeleteFolderHandler)
-
-	// Sync route
-	router.POST("/api/sync", handlers.HandleSync)
-
-	// Auth routes
+	// Auth routes (no auth required)
 	router.GET("/login", handlers.LoginHandler)
 	router.GET("/auth/google", handlers.GoogleLoginHandler)
 	router.GET("/auth/google/callback", handlers.GoogleCallbackHandler)
 	router.GET("/logout", handlers.LogoutHandler)
+
+	// Protected routes (auth required)
+	protected := router.Group("/")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.GET("/", handlers.HomeHandler)
+		protected.GET("/view/:title", handlers.ViewHandler)
+		protected.GET("/edit/:title", handlers.EditHandler)
+		protected.GET("/new", handlers.EditHandler)
+		protected.POST("/save", handlers.SaveHandler)
+		protected.POST("/delete/:title", handlers.DeleteHandler)
+		protected.GET("/delete/:title", handlers.DeleteHandler)
+
+		// Category routes
+		protected.POST("/category/create", handlers.CategoryCreateHandler)
+		protected.GET("/category/*path", handlers.CategoryHandler)
+		protected.GET("/api/folders/children/*path", handlers.GetFolderChildrenHandler)
+		protected.DELETE("/api/folder/delete", handlers.DeleteFolderHandler)
+
+		// Sync route
+		protected.POST("/api/sync", handlers.HandleSync)
+	}
 
 	// Start server
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)

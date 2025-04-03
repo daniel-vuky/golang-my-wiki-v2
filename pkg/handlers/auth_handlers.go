@@ -38,6 +38,15 @@ func GoogleCallbackHandler(c *gin.Context) {
 }
 
 func LogoutHandler(c *gin.Context) {
-	auth.ClearUserSession(c)
+	session := sessions.Default(c)
+	session.Clear()
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   -1, // Set to -1 to expire the cookie immediately
+		HttpOnly: true,
+		Secure:   config.GetConfig().Session.Secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	session.Save()
 	c.Redirect(http.StatusTemporaryRedirect, "/login")
 }

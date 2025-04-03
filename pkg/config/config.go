@@ -15,7 +15,9 @@ type Config struct {
 	} `mapstructure:"server"`
 	Session struct {
 		Secret        string   `mapstructure:"secret"`
+		Name          string   `mapstructure:"name"`
 		AllowedEmails []string `mapstructure:"allowed_emails"`
+		Secure        bool     `mapstructure:"secure"`
 	} `mapstructure:"session"`
 	Google struct {
 		ClientID      string   `mapstructure:"client_id"`
