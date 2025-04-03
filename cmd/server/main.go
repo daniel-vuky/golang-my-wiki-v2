@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/auth"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/handlers"
-	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/middleware"
 	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/storage"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -45,6 +45,7 @@ func main() {
 		HttpOnly: true,
 		Secure:   cfg.Session.Secure, // Use secure cookies in production
 		SameSite: http.SameSiteLaxMode,
+		Domain:   "", // Empty domain to ensure cookie is only sent to the exact domain
 	})
 	log.Printf("Initializing session store with MaxAge: 3600 seconds, Secure: %v", cfg.Session.Secure)
 	router.Use(sessions.Sessions("wiki_session", sessionStore))
@@ -80,7 +81,7 @@ func main() {
 
 	// Protected routes (auth required)
 	protected := router.Group("/")
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(auth.AuthRequired())
 	{
 		protected.GET("/", handlers.HomeHandler)
 		protected.GET("/view/:title", handlers.ViewHandler)

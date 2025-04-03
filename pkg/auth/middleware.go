@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/daniel-vuky/golang-my-wiki-v2/pkg/config"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
@@ -29,7 +30,16 @@ func AuthRequired() gin.HandlerFunc {
 			log.Printf("Session invalid or expired, redirecting to login")
 			// Clear any existing session data
 			session.Clear()
-			session.Save()
+			session.Options(sessions.Options{
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				Secure:   config.GetConfig().Session.Secure,
+				SameSite: http.SameSiteLaxMode,
+			})
+			if err := session.Save(); err != nil {
+				log.Printf("Error saving session: %v", err)
+			}
 			c.Redirect(http.StatusTemporaryRedirect, "/login")
 			c.Abort()
 			return
@@ -40,7 +50,16 @@ func AuthRequired() gin.HandlerFunc {
 		if time.Since(lastActivityTime) > 60*time.Second {
 			log.Printf("Session expired, redirecting to login")
 			session.Clear()
-			session.Save()
+			session.Options(sessions.Options{
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				Secure:   config.GetConfig().Session.Secure,
+				SameSite: http.SameSiteLaxMode,
+			})
+			if err := session.Save(); err != nil {
+				log.Printf("Error saving session: %v", err)
+			}
 			c.Redirect(http.StatusTemporaryRedirect, "/login")
 			c.Abort()
 			return
@@ -48,7 +67,12 @@ func AuthRequired() gin.HandlerFunc {
 
 		// Update last activity time
 		session.Set("last_activity", time.Now().Unix())
-		session.Save()
+		if err := session.Save(); err != nil {
+			log.Printf("Error saving session: %v", err)
+			c.Redirect(http.StatusTemporaryRedirect, "/login")
+			c.Abort()
+			return
+		}
 
 		// Set user info in context
 		c.Set("user", User{
