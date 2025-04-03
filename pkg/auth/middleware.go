@@ -45,9 +45,9 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Check if session has expired (60 seconds)
+		// Check if session has expired (1 hour)
 		lastActivityTime := time.Unix(lastActivity.(int64), 0)
-		if time.Since(lastActivityTime) > 60*time.Second {
+		if time.Since(lastActivityTime) > 3600*time.Second {
 			log.Printf("Session expired, redirecting to login")
 			session.Clear()
 			session.Options(sessions.Options{
