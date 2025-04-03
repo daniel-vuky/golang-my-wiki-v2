@@ -44,6 +44,10 @@ A modern, feature-rich personal wiki system built with Go and a beautiful user i
   - Efficient file system operations
   - Optimized GitHub API usage
 
+## 📸 Demo
+
+![Demo](demo.gif)
+
 ## 🚀 Quick Start
 
 ### Prerequisites
