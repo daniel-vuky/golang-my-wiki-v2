@@ -1,4 +1,113 @@
 /* View page specific styles */
+
+.content-body {
+    display: block !important;
+    gap: unset !important;
+    color: var(--text-primary);
+}
+
+.content-body h1, .content-body h2, .content-body h3,
+.content-body h4, .content-body h5, .content-body h6 {
+    margin: 0.8em 0 0.3em 0 !important;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+.content-body h1 { font-size: 1.8em; }
+.content-body h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
+.content-body h3 { font-size: 1.25em; }
+
+.content-body p { margin: 0 0 0.4em 0 !important; color: var(--text-primary); }
+
+/* Remove bottom margin from last <p> inside block containers to avoid double spacing */
+.content-body blockquote p:last-child,
+.content-body li p:last-child,
+.content-body td p:last-child,
+.content-body th p:last-child { margin-bottom: 0 !important; }
+
+/* Suppress empty paragraphs and trailing <br> that marked.js inserts */
+.content-body p:empty { display: none !important; }
+.content-body p > br:only-child { display: none !important; }
+.content-body p > br:last-child { line-height: 0; font-size: 0; }
+
+.content-body a { color: var(--accent-color); text-decoration: none; }
+.content-body a:hover { text-decoration: underline; }
+
+.content-body ul, .content-body ol {
+    margin: 0 0 0.4em 1.5em !important;
+    padding-left: 1.5em;
+}
+.content-body li { margin-bottom: 0.15em !important; color: var(--text-primary); }
+
+.content-body pre {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.75em 1em;
+    overflow-x: auto;
+    margin: 0 0 0.4em 0 !important;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875em;
+    line-height: 1.5;
+}
+
+.content-body code {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875em;
+}
+
+.content-body pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 1em;
+}
+
+.content-body blockquote {
+    border-left: 4px solid var(--accent-color);
+    margin: 0 0 0.4em 0 !important;
+    padding: 0.4em 1em;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-radius: 0 4px 4px 0;
+}
+
+.content-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 0 0.4em 0 !important;
+    overflow-x: auto;
+    display: block;
+}
+.content-body table th,
+.content-body table td {
+    border: 1px solid var(--border-color);
+    padding: 0.4em 0.75em;
+    text-align: left;
+}
+.content-body table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+}
+.content-body table tr:nth-child(even) {
+    background: var(--bg-secondary);
+}
+
+.content-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.content-body hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 0.5em 0 !important;
+}
 .button.secondary.delete-btn {
     background-color: #F44336;
     color: white;
@@ -50,4 +159,76 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-} 
+}
+
+/* ── Dark theme overrides for rendered content ── */
+body.dark-theme .content-body,
+body.dark-theme .content-body p,
+body.dark-theme .content-body li,
+body.dark-theme .content-body td,
+body.dark-theme .content-body th,
+body.dark-theme .content-body span,
+body.dark-theme .content-body strong,
+body.dark-theme .content-body em,
+body.dark-theme .content-body dt,
+body.dark-theme .content-body dd {
+    color: #e6edf3;
+}
+
+body.dark-theme .content-body h1,
+body.dark-theme .content-body h2,
+body.dark-theme .content-body h3,
+body.dark-theme .content-body h4,
+body.dark-theme .content-body h5,
+body.dark-theme .content-body h6 {
+    color: #e6edf3;
+}
+
+body.dark-theme .content-body h1,
+body.dark-theme .content-body h2 {
+    border-bottom-color: #404040;
+}
+
+body.dark-theme .content-body a {
+    color: #58a6ff;
+}
+
+body.dark-theme .content-body code {
+    background-color: #2d2d2d;
+    border-color: #404040;
+    color: #f0883e;
+}
+
+body.dark-theme .content-body pre {
+    background-color: #2d2d2d;
+    border-color: #404040;
+}
+
+body.dark-theme .content-body pre code {
+    background-color: transparent;
+    color: #e6edf3;
+}
+
+body.dark-theme .content-body blockquote {
+    border-left-color: #555;
+    background-color: #2d2d2d;
+    color: #9e9e9e;
+}
+
+body.dark-theme .content-body table th {
+    background-color: #2d2d2d;
+}
+
+body.dark-theme .content-body table tr:nth-child(even) {
+    background-color: #252525;
+}
+
+body.dark-theme .content-body table td,
+body.dark-theme .content-body table th {
+    border-color: #404040;
+    color: #e6edf3;
+}
+
+body.dark-theme .content-body hr {
+    border-top-color: #404040;
+}

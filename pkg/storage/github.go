@@ -90,30 +90,43 @@ func NewGitHubStorage(config *config.Config) (*GitHubStorage, error) {
 	}, nil
 }
 
-// ListPages retrieves all pages from the GitHub repository
+// ListPages retrieves all pages from the GitHub repository recursively
 func (g *GitHubStorage) ListPages() ([]types.Page, error) {
-	ctx := context.Background()
-	opts := &github.RepositoryContentGetOptions{
-		Ref: g.branch,
-	}
-
-	_, contents, _, err := g.client.Repositories.GetContents(ctx, g.owner, g.repository, "", opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get repository contents: %v", err)
-	}
-
 	var pages []types.Page
+	if err := g.getAllPages("", &pages); err != nil {
+		return nil, err
+	}
+	return pages, nil
+}
+
+// getAllPages recursively collects all .txt pages under the given path
+func (g *GitHubStorage) getAllPages(path string, pages *[]types.Page) error {
+	opts := &github.RepositoryContentGetOptions{Ref: g.branch}
+
+	_, contents, _, err := g.client.Repositories.GetContents(g.ctx, g.owner, g.repository, path, opts)
+	if err != nil {
+		return fmt.Errorf("failed to get repository contents at %q: %v", path, err)
+	}
+
 	for _, content := range contents {
-		if content.GetType() == "file" && strings.HasSuffix(content.GetName(), ".txt") {
-			page, err := g.GetPage(content.GetPath())
-			if err != nil {
-				continue // Skip files that can't be read
+		switch content.GetType() {
+		case "file":
+			if strings.HasSuffix(content.GetName(), ".txt") {
+				page, err := g.GetPage(content.GetPath())
+				if err != nil {
+					log.Printf("Warning: failed to read page %s: %v", content.GetPath(), err)
+					continue
+				}
+				*pages = append(*pages, *page)
 			}
-			pages = append(pages, *page)
+		case "dir":
+			if err := g.getAllPages(content.GetPath(), pages); err != nil {
+				log.Printf("Warning: failed to recurse into %s: %v", content.GetPath(), err)
+			}
 		}
 	}
 
-	return pages, nil
+	return nil
 }
 
 // GetPage retrieves a page from GitHub

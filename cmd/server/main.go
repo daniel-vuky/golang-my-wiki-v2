@@ -34,6 +34,14 @@ func main() {
 		log.Fatalf("Failed to create data directory: %v", err)
 	}
 
+	// Sync from GitHub to local on startup
+	log.Printf("Syncing data from GitHub...")
+	if err := store.Sync(); err != nil {
+		log.Printf("Warning: Failed to sync from GitHub on startup: %v", err)
+	} else {
+		log.Printf("Sync from GitHub completed successfully")
+	}
+
 	// Initialize Gin router
 	router := gin.Default()
 

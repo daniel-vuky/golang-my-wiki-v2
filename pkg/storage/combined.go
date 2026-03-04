@@ -50,6 +50,17 @@ func (s *CombinedStorage) Sync() error {
 
 // pullFromGitHub pulls changes from GitHub to local storage
 func (s *CombinedStorage) pullFromGitHub() error {
+	// Sync folders first
+	folders, err := s.github.ListFolders()
+	if err != nil {
+		return fmt.Errorf("failed to list folders from GitHub: %v", err)
+	}
+	for _, folder := range folders {
+		if err := s.local.CreateFolder(folder); err != nil {
+			log.Printf("Warning: Failed to create local folder %s: %v", folder, err)
+		}
+	}
+
 	// Get all pages from GitHub
 	pages, err := s.github.ListPages()
 	if err != nil {

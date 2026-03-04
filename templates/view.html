@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="/static/css/pages/view-specific.css">
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- highlight.js — theme switched by JS -->
+    <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link id="hljs-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled>
 </head>
 <body class="logged-in">
     <div class="wiki-container">
@@ -30,7 +33,7 @@
                     </a>
                 </div>
             </header>
-            
+
             {{if .FolderPath}}
             <div class="breadcrumbs">
                 <ul>
@@ -48,31 +51,66 @@
                 </ul>
             </div>
             {{end}}
-            
-            <div class="content-body">
-                {{html .Content}}
-            </div>
+
+            <!-- Raw content stored here; rendered by marked.js below -->
+            <div id="raw-content" hidden>{{.Content}}</div>
+            <div id="rendered-content" class="content-body"></div>
         </main>
     </div>
     <button class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon"></i>
     </button>
-    
+
     <div id="loader" class="loader-overlay">
         <div class="loader-spinner"></div>
         <div class="loader-text">Deleting note...</div>
     </div>
-    
+
     <script>
-        // Initialize sidebar data
         window.sidebarData = {
             currentPath: "{{.CurrentPath}}",
             folderPath: "{{.FolderPath}}",
             noteTitle: "{{.Title}}"
         };
     </script>
+    <!-- marked.js + highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="/static/js/theme.js"></script>
     <script src="/static/js/view.js"></script>
     <script src="/static/js/sidebar.js"></script>
+    <script>
+        // Render markdown content
+        marked.setOptions({
+            breaks: false,
+            gfm: true,
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        const raw = document.getElementById('raw-content').textContent;
+        document.getElementById('rendered-content').innerHTML = marked.parse(raw);
+
+        // Apply highlight.js to any code blocks not already highlighted
+        document.querySelectorAll('#rendered-content pre code').forEach(function(block) {
+            if (!block.dataset.highlighted) hljs.highlightElement(block);
+        });
+
+        // Sync highlight.js theme with current page theme
+        function syncHljsTheme() {
+            const dark = document.body.classList.contains('dark-theme');
+            document.getElementById('hljs-light').disabled = dark;
+            document.getElementById('hljs-dark').disabled = !dark;
+        }
+        syncHljsTheme();
+
+        // Re-sync when theme is toggled
+        const _origToggle = window.toggleTheme;
+        window.toggleTheme = function() { _origToggle(); syncHljsTheme(); };
+    </script>
 </body>
-</html> 
+</html>
