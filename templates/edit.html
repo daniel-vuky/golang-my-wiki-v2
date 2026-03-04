@@ -4,17 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}} - Daniel's Wiki</title>
+    <!-- Toast UI Editor CSS first so our overrides win -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css">
+<!-- highlight.js themes -->
+    <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link id="hljs-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled>
     <!-- Base styles -->
     <link rel="stylesheet" href="/static/css/base.css">
     <!-- Component styles -->
     <link rel="stylesheet" href="/static/css/components/sidebar.css">
-    <link rel="stylesheet" href="/static/css/components/tinymce.css">
-    <!-- Page specific styles -->
+    <!-- Page specific styles — loaded after Toast UI so our rules win -->
     <link rel="stylesheet" href="/static/css/pages/edit.css">
     <link rel="stylesheet" href="/static/css/pages/folder.css">
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="/static/js/tinymce/tinymce.min.js"></script>
 </head>
 <body class="logged-in">
     <div class="wiki-container">
@@ -30,7 +33,7 @@
                     {{end}}
                 </div>
             </header>
-            
+
             {{if .FolderPath}}
             <div class="breadcrumbs">
                 <ul>
@@ -48,6 +51,7 @@
                 </ul>
             </div>
             {{end}}
+
             <div class="content-body">
                 <form id="note-form">
                     <input type="hidden" name="original_title" value="{{.Title}}">
@@ -58,7 +62,9 @@
                         <input type="text" id="title" name="title" required placeholder="Enter page title" class="form-control" value="{{.Title}}">
                     </div>
                     <div class="form-group">
-                        <textarea id="editor" name="content">{{.Content}}</textarea>
+                        <!-- Hidden textarea holds the raw content for Go template rendering -->
+                        <textarea id="raw-content" hidden>{{.Content}}</textarea>
+                        <div id="editor"></div>
                     </div>
                     <div class="button-group">
                         <button type="button" id="save-btn" class="button primary">
@@ -72,18 +78,21 @@
     <button class="theme-toggle" onclick="toggleTheme()">
         <i class="fas fa-moon"></i>
     </button>
-    <div id="sidebar-data" 
+    <div id="sidebar-data"
          data-current-path="{{.CurrentPath}}"
          data-folder-path="{{.FolderPath}}"
          data-note-title="{{.Title}}"
          data-is-new-page="{{if .IsNewPage}}true{{else}}false{{end}}">
     </div>
+    <!-- highlight.js (needed for syncHljsTheme and preview) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Toast UI Editor + code syntax highlight plugin (bundles its own hljs internally) -->
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <script src="https://uicdn.toast.com/editor-plugin-code-syntax-highlight/latest/toastui-editor-plugin-code-syntax-highlight-all.min.js"></script>
     <script src="/static/js/theme.js"></script>
-    <script src="/static/js/tinymce-config.js"></script>
     <script src="/static/js/sidebar.js"></script>
     <script src="/static/js/pages/edit.js"></script>
     <script>
-        // Initialize sidebar data from data attributes
         const sidebarDataEl = document.getElementById('sidebar-data');
         window.sidebarData = {
             currentPath: sidebarDataEl.dataset.currentPath,
@@ -93,4 +102,4 @@
         };
     </script>
 </body>
-</html> 
+</html>
