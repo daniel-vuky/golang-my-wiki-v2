@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{if .IsNewPage}}New Page{{else}}Edit {{.Title}}{{end}} - Daniel's Wiki</title>
     <!-- Toast UI Editor CSS first so our overrides win -->
-    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css">
+    <link rel="stylesheet" href="/static/vendor/toastui/toastui-editor.min.css">
 <!-- highlight.js themes -->
-    <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-    <link id="hljs-dark"  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled>
+    <link id="hljs-light" rel="stylesheet" href="/static/vendor/highlight/css/github.min.css">
+    <link id="hljs-dark"  rel="stylesheet" href="/static/vendor/highlight/css/github-dark.min.css" disabled>
     <!-- Base styles -->
     <link rel="stylesheet" href="/static/css/base.css">
     <!-- Component styles -->
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/static/css/pages/edit.css">
     <link rel="stylesheet" href="/static/css/pages/folder.css">
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/vendor/font-awesome/css/all.min.css">
 </head>
 <body class="logged-in">
     <div class="wiki-container">
@@ -85,10 +85,10 @@
          data-is-new-page="{{if .IsNewPage}}true{{else}}false{{end}}">
     </div>
     <!-- highlight.js (needed for syncHljsTheme and preview) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="/static/vendor/highlight/js/highlight.min.js"></script>
     <!-- Toast UI Editor + code syntax highlight plugin (bundles its own hljs internally) -->
-    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
-    <script src="https://uicdn.toast.com/editor-plugin-code-syntax-highlight/latest/toastui-editor-plugin-code-syntax-highlight-all.min.js"></script>
+    <script src="/static/vendor/toastui/toastui-editor-all.min.js"></script>
+    <script src="/static/vendor/toastui/toastui-editor-plugin-code-syntax-highlight-all.min.js"></script>
     <script src="/static/js/theme.js"></script>
     <script src="/static/js/sidebar.js"></script>
     <script src="/static/js/pages/edit.js"></script>
