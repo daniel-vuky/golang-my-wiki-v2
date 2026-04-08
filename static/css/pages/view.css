@@ -100,10 +100,6 @@
     display: none;
 }
 
-.rendered-content {
-    white-space: pre-wrap;
-}
-
 /* Responsive styles */
 @media (max-width: 768px) {
     .content {

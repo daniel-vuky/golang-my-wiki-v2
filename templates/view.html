@@ -80,17 +80,8 @@
     <script src="/static/js/view.js"></script>
     <script src="/static/js/sidebar.js"></script>
     <script>
-        // Render markdown content
-        marked.setOptions({
-            breaks: false,
-            gfm: true,
-            highlight: function(code, lang) {
-                if (lang && hljs.getLanguage(lang)) {
-                    return hljs.highlight(code, { language: lang }).value;
-                }
-                return hljs.highlightAuto(code).value;
-            }
-        });
+        // marked.js v9 API: use marked.use() instead of deprecated setOptions()
+        marked.use({ breaks: true, gfm: true });
 
         const raw = document.getElementById('raw-content').textContent;
         document.getElementById('rendered-content').innerHTML = marked.parse(raw);

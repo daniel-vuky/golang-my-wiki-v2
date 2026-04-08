@@ -4,7 +4,6 @@
     display: block !important;
     gap: unset !important;
     color: var(--text-primary);
-    white-space: pre-wrap;
 }
 
 .content-body h1, .content-body h2, .content-body h3,
@@ -155,10 +154,6 @@
     color: white;
     font-size: 1.2rem;
     text-align: center;
-}
-
-.rendered-content {
-    white-space: pre-wrap;
 }
 
 @keyframes spin {
